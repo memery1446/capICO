@@ -7,11 +7,14 @@
   }
 
   describe('capICO', () => {
-    let capico
+    let capico, token
 
     beforeEach(async () => {
         const capICO = await ethers.getContractFactory('capICO') // pull in contract from hardhat
-        capico = await capICO.deploy() 
+        const Token = await ethers.getContractFactory('Token')
+        
+        token = await Token.deploy('CKOIN Token', 'CKOIN', '1000000')
+        capico = await capICO.deploy(token.address) 
     })
 
     describe('Deployment', () => {
@@ -22,5 +25,10 @@
         //console.log('verifying name...')
         //calling the name function (we have this funct. automatically once declared in contr.)
       })
+
+    it('returns token address', async () => {
+      expect(await capico.token()).to.equal(token.address)
+    })
+
     })
   })
