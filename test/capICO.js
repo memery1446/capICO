@@ -4,7 +4,9 @@
   const tokens = (n) => {
     return ethers.utils.parseUnits(n.toString(), 'ether');
 
+
   }
+  const ether = tokens
 
   describe('capICO', () => {
     let capico, token
@@ -15,12 +17,13 @@
         const Token = await ethers.getContractFactory('Token')
         
         token = await Token.deploy('CKOIN Token', 'CKOIN', '1000000')
-        capico = await capICO.deploy(token.address) 
+      
 
         accounts = await ethers.getSigners()
         deployer = accounts[0]
         user1 = accounts[1]
 
+    capico = await capICO.deploy(token.address, ether(1))
 
     let transaction = await token.connect(deployer).transfer(capico.address, tokens(1000000))
     await transaction.wait()
@@ -35,7 +38,11 @@
       //   //calling the name function (we have this funct. automatically once declared in contr.)
       // })
     it('sends tokens to the capICO contract', async () => {
-      expect(await token.balanceOf(capico.address)).to.equal(tokens('1000000'))
+      expect(await token.balanceOf(capico.address)).to.equal(tokens(1000000))
+    })
+
+    it('returns the price', async () => {
+      expect(await capico.price()).to.equal(ether(1))
     })
 
     it('returns token address', async () => {
@@ -45,8 +52,26 @@
     })
 
   describe('Buying Tokens', () => {
-    it('transfers tokens', async () => {
+    let transaction, result
+    let amount = tokens(10)
+
+    describe('Success', () => {
+
+      beforeEach(async () => {
+        let transaction = await capico.connect(user1).buyTokens(amount)
+        let result = await transaction.wait()
+      })
+      it('transfers tokens', async () => {
+        expect(await token.balanceOf(capico.address)).to.equal(tokens(999990))
+        expect(await token.balanceOf(user1.address)).to.equal(amount)
+    })
+    
 
     })
     })
   })
+
+
+
+
+
