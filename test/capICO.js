@@ -75,6 +75,10 @@
       it('rejects insufficient ETH', async () => {
         await expect(capico.connect(user1).buyTokens(tokens(10), { value: 0 })).to.be.reverted
       })
+
+      it('rejects purchases over the maxSupply', async () => {
+        await expect(capico.connect(user1).buyTokens(tokens(1200000), {value: 1200000 })).to.be.reverted
+      })
   })
     })
   })
