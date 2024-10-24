@@ -58,14 +58,16 @@
     describe('Success', () => {
 
       beforeEach(async () => {
-        let transaction = await capico.connect(user1).buyTokens(amount)
-        let result = await transaction.wait()
+        transaction = await capico.connect(user1).buyTokens(amount, { value: ether(10) })
+        result = await transaction.wait()
       })
       it('transfers tokens', async () => {
         expect(await token.balanceOf(capico.address)).to.equal(tokens(999990))
         expect(await token.balanceOf(user1.address)).to.equal(amount)
     })
-    
+      it('updates the contracts ether balance', async () => {
+        expect(await ethers.provider.getBalance(capico.address)).to.equal(amount)
+      })
 
     })
     })
