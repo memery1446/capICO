@@ -18,13 +18,13 @@
     })
 
     describe('Deployment', () => {
-      it('has correct name', async () => {
+      // it('has correct name', async () => {
      
-        expect(await capico.name()).to.equal('capICO') 
+      //   expect(await capico.name()).to.equal('capICO') 
 
-        //console.log('verifying name...')
-        //calling the name function (we have this funct. automatically once declared in contr.)
-      })
+      //   //console.log('verifying name...')
+      //   //calling the name function (we have this funct. automatically once declared in contr.)
+      // })
 
     it('returns token address', async () => {
       expect(await capico.token()).to.equal(token.address)

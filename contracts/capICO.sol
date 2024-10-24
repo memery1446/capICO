@@ -8,7 +8,7 @@ import "./Token.sol";
 contract capICO {
   
  
-  string public name = "capICO";
+  string public name;
   Token public token;
 
 constructor(Token _token) {
