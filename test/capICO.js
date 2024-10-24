@@ -70,6 +70,12 @@
       })
 
     })
+
+  describe('Failure', () => {
+      it('rejects insufficient ETH', async () => {
+        await expect(capico.connect(user1).buyTokens(tokens(10), { value: 0 })).to.be.reverted
+      })
+  })
     })
   })
 

@@ -14,6 +14,7 @@ constructor(Token _token, uint256 _price) {
     price = _price;
   }
 function buyTokens(uint256 _amount) public payable {
+    require(msg.value == (_amount / 1e18) * price);
     token.transfer(msg.sender, _amount);
 }
 
