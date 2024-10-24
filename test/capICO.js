@@ -109,6 +109,10 @@
       it('updates the user token balance', async () => {
         expect(await token.balanceOf(user1.address)).to.equal(amount)
       })
+
+      it('confirms the owner is the deployer', async () => {
+        expect(await msg.sender(address)).to.equal(deployer.address)
+      })
     })
   })
   })
