@@ -23,7 +23,7 @@
         deployer = accounts[0]
         user1 = accounts[1]
 
-    capico = await capICO.deploy(token.address, ether(1))
+    capico = await capICO.deploy(token.address, ether(1), '1000000')
 
     let transaction = await token.connect(deployer).transfer(capico.address, tokens(1000000))
     await transaction.wait()
@@ -69,6 +69,16 @@
         expect(await ethers.provider.getBalance(capico.address)).to.equal(amount)
       })
 
+      it('updates the number of tokens sold', async () => {
+        expect(await capico.tokensSold()).to.equal(amount)
+      })
+
+      it('emits a buy event', async () => {
+        //console.log(result)
+
+        await expect(transaction).to.emit(capico, 'Buy').withArgs(amount, user1.address)
+      })
+
     })
 
   describe('Failure', () => {
@@ -81,6 +91,26 @@
       })
   })
     })
+
+  describe('Sending ETH', () => {
+    let transaction, result
+    let amount = ether(10) 
+
+    describe('Success', () => {
+      beforeEach(async () => {
+        transaction = await user1.sendTransaction({ to: capico.address, value: amount })
+        result = await transaction.wait()
+      })
+
+      it('updates contract eth balance', async () => {
+        expect(await ethers.provider.getBalance(capico.address)).to.equal(amount)
+      })
+
+      it('updates the user token balance', async () => {
+        expect(await token.balanceOf(user1.address)).to.equal(amount)
+      })
+    })
+  })
   })
 
 
