@@ -111,7 +111,7 @@
       })
 
       it('confirms the owner is the deployer', async () => {
-        expect(await msg.sender(address)).to.equal(deployer.address)
+        expect(await deployer.getAddress()).to.equal(msg.sender)
       })
     })
   })

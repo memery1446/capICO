@@ -38,10 +38,15 @@ function buyTokens(uint256 _amount) public payable {
 }
 
 function finalize() public {
-    // Send ether to crowdsale creator
+    // Send remaining ether to crowdsale creator
 
+    // Determine number of tokens left
+    uint256 remainingTokens = token.balanceOf(address(this));
+    token.transfer(owner, remainingTokens);
 
     // Send remaining tokens to same 
+
+
 }
 
 }
