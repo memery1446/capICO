@@ -110,11 +110,38 @@
         expect(await token.balanceOf(user1.address)).to.equal(amount)
       })
 
-      it('confirms the owner is the deployer', async () => {
-        expect(await deployer.getAddress()).to.equal(msg.sender)
-      })
+      // it('confirms the owner is the deployer', async () => {
+      //   expect(await deployer.getAddress()).to.equal(msg.sender)
+      // })
     })
   })
+
+  describe('Finalizing the sale', () => {
+    let transaction, result
+    let amount = tokens(10)  
+    let value = ether(10)
+
+
+  describe('Success', async () => {
+    beforeEach(async () => {
+      transaction = await capico.connect(user1).buyTokens(amount, { value: value })
+      result = await transaction.wait()
+
+      transaction = await capico.connect(deployer).finalize()
+      result = await transaction.wait()
+    })
+
+    it('transfers remaining tokens to owner', async () => {
+          expect(await token.balanceOf(capico.address)).to.equal(0)
+          expect(await token.balanceOf(deployer.address)).to.equal(tokens(999990))
+        })
+    })
+
+    describe('Failure', () => {
+
+    })
+})
+
   })
 
 

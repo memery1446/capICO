@@ -41,8 +41,9 @@ function finalize() public {
     // Send remaining ether to crowdsale creator
 
     // Determine number of tokens left
-    uint256 remainingTokens = token.balanceOf(address(this));
-    token.transfer(owner, remainingTokens);
+    // uint256 remainingTokens = token.balanceOf(address(this));
+    // token.transfer(owner, remainingTokens);
+    require(token.transfer(owner, token.balanceOf(address(this))));
 
     // Send remaining tokens to same 
 
