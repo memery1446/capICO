@@ -13,13 +13,9 @@ const Navigation = ({ account }) => {
         className="d-inline-block align-top mx-3"
       />
       <Navbar.Brand href="#">Dapp University Template</Navbar.Brand>
-      <Navbar.Collapse className="justify-content-end">
-        <Navbar.Text>
-          {account}
-        </Navbar.Text>
-      </Navbar.Collapse>
+      
     </Navbar>
-  );
+  )
 }
 
 export default Navigation;
