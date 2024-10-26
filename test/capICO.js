@@ -135,16 +135,26 @@
           expect(await token.balanceOf(capico.address)).to.equal(0)
           expect(await token.balanceOf(deployer.address)).to.equal(tokens(999990))
         })
+
+    it('transfers ETH balance to owner', async () => {
+      expect(await ethers.provider.getBalance(capico.address)).to.equal(0)
+    })
+
+    it('emits a finalize event', async () => {
+    await expect(transaction).to.emit(capico, "Finalize")
+      .withArgs(amount, value)
+  })
     })
 
     describe('Failure', () => {
-
+      it('prevents a non-owner from finalizing', async () => {
+        await expect(capico.connect(user1).finalize()).to.be.reverted
     })
 })
 
   })
 
-
+})
 
 
 

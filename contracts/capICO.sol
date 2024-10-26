@@ -13,6 +13,7 @@ contract capICO {
     uint256 public tokensSold;
 
 event Buy(uint256 amount, address buyer); 
+event Finalize(uint256 tokensSold, uint256 ethRaised);
 
 constructor(Token _token, uint256 _price, uint256 _maxTokens) {
     token = _token;
@@ -39,7 +40,8 @@ function buyTokens(uint256 _amount) public payable {
 
 function finalize() public {
     // Send remaining ether to crowdsale creator
-
+    require(msg.sender == owner);
+    require(token.transfer(owner, token.balanceOf(address(this))));
     // Determine number of tokens left
     // uint256 remainingTokens = token.balanceOf(address(this));
     // token.transfer(owner, remainingTokens);
@@ -47,6 +49,11 @@ function finalize() public {
 
     // Send remaining tokens to same 
 
+    uint256 value = address(this).balance;
+    (bool sent, ) = owner.call{value: value}("");
+    require(sent);
+
+    emit Finalize(tokensSold, value);
 
 }
 
