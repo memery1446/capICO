@@ -20,12 +20,17 @@ constructor(Token _token, uint256 _price, uint256 _maxTokens) {
     price = _price;
     maxTokens = _maxTokens;
     owner = msg.sender;
-  }
+}
+
+modifier onlyOwner() {
+    require(msg.sender == owner, 'only the owner can call this function');
+
+    _; 
+}
 
 receive() external payable {
     uint256 amount = msg.value / price;
     buyTokens(amount * 1e18); 
-
 }
 
 function buyTokens(uint256 _amount) public payable {
@@ -38,7 +43,11 @@ function buyTokens(uint256 _amount) public payable {
     emit Buy(_amount, msg.sender);
 }
 
-function finalize() public {
+function setPrice(uint256 _price) public onlyOwner {
+    price = _price;
+}
+
+function finalize () public onlyOwner {
     // Send remaining ether to crowdsale creator
     require(msg.sender == owner);
     require(token.transfer(owner, token.balanceOf(address(this))));

@@ -116,6 +116,29 @@
     })
   })
 
+  describe('Updating Price', () => {
+  let transaction, result
+  let price = ether(2)
+
+  describe('Success', () => {
+
+    beforeEach(async () => {
+      transaction = await capico.connect(deployer).setPrice(ether(2))
+      result = await transaction.wait()
+    })
+
+    it('updates the price', async () => {
+      expect(await capico.price()).to.equal(ether(2))
+    })
+  })
+
+  describe('Failure', () => {
+    it('prevents a non-owner from updating price', async () => {
+      await expect(capico.connect(user1).setPrice(price)).to.be.reverted
+    })
+  })
+})
+
   describe('Finalizing the sale', () => {
     let transaction, result
     let amount = tokens(10)  
@@ -148,6 +171,8 @@
 
     describe('Failure', () => {
       it('prevents a non-owner from finalizing', async () => {
+        // comment in and comment out two lines below for failure case
+        // await capico.connect(user1).finalize()
         await expect(capico.connect(user1).finalize()).to.be.reverted
     })
 })
