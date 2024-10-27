@@ -9,11 +9,16 @@ import Info from './Info';
 import TOKEN_ABI from '../abis/Token.json'
 import CAPICO_ABI from '../abis/capICO.json'
 
+// Config
+import config from '../config.json';
+
 function App() {
 
   const [provider, setProvider] = useState(null)
+  const[ico, setIco] = useState(null)
   const [account, setAccount] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+ 
 
   const loadBlockchainData = async () => {
     // Provider
@@ -21,9 +26,16 @@ function App() {
     console.log(provider)
     setProvider(provider)
 
+    // Chain ID
+
+    const { chainId } = await provider.getNetwork()
+
       // Contracts
-    const token = ethers.Contract('0x...aa3', TOKEN_ABI, provider)
-    console.log(token)
+    const token = new ethers.Contract(config[chainId].token.address, TOKEN_ABI, provider)
+    console.log(token.address)
+    const ico = new ethers.Contract(config[chainId].capico.address, CAPICO_ABI, provider)
+    setIco(ico)
+
     
       // Accounts
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
@@ -35,8 +47,8 @@ function App() {
   useEffect(() => {
       if (isLoading) {
     loadBlockchainData()
-  }
-  });
+  } 
+  }, [isLoading]);
 
   return(
     <Container>
