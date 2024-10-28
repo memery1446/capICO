@@ -1,4 +1,4 @@
-const Info = ({ account }) => {
+const Info = ({ account, accountBalance }) => {
 	return(
 		<div className='my-3'>
 		  <p><strong>Account:</strong> {account}</p>
