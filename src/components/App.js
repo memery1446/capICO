@@ -15,8 +15,9 @@ import config from '../config.json';
 function App() {
 
   const [provider, setProvider] = useState(null)
-  const [capico, setCapIco] = useState(null)
+  const [capico, setCapICO] = useState(null)
   const [account, setAccount] = useState(null)
+  const [accountBalance, setAccountBalance] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
 
@@ -33,14 +34,19 @@ function App() {
       // Contracts
     const token = new ethers.Contract(config[chainId].token.address, TOKEN_ABI, provider)
     console.log(token.address)
+
     const capico = new ethers.Contract(config[chainId].capico.address, CAPICO_ABI, provider)
-    setCapIco(capico)
+    setCapICO(capico)
 
       // Accounts
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
     const account = ethers.utils.getAddress(accounts[0])
     setAccount(account)
-      
+
+    // Fetch account balance
+    const accountBalance = ethers.utils.formatUnits(await token.balanceOf(account), 18)    
+
+    setAccountBalance(accountBalance)
 
     setIsLoading(false)
   }
@@ -56,7 +62,7 @@ function App() {
     <Navigation/>
       <hr />  
       {account && (
-    <Info account={account} />
+    <Info account={account} accountBalance={accountBalance} />
     )}
     </Container>
   )
