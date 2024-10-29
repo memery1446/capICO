@@ -4,6 +4,8 @@ import { ethers } from 'ethers'
 
 import Navigation from './Navigation';  
 import Info from './Info';
+import Loading from './Loading';
+import Progress from './Progress';
 
  // ABI's
 import TOKEN_ABI from '../abis/Token.json'
@@ -18,6 +20,11 @@ function App() {
   const [capico, setCapICO] = useState(null)
   const [account, setAccount] = useState(null)
   const [accountBalance, setAccountBalance] = useState(0)
+
+  const [price, setPrice] = useState(0)
+  const [maxTokens, setMaxTokens] = useState(0)
+  const [tokensSold, setTokensSold] = useState(0)
+
   const [isLoading, setIsLoading] = useState(true)
 
 
@@ -43,10 +50,21 @@ function App() {
     const account = ethers.utils.getAddress(accounts[0])
     setAccount(account)
 
-    // Fetch account balance
+    // Account balance
     const accountBalance = ethers.utils.formatUnits(await token.balanceOf(account), 18)    
-
     setAccountBalance(accountBalance)
+
+    // Price
+    const price = ethers.utils.formatUnits(await capico.price(), 18)
+    setPrice(price)
+
+    // Max Tokens
+    const maxTokens = ethers.utils.formatUnits(await capico.maxTokens(), 18)
+    setMaxTokens(maxTokens)
+
+    // Tokens Sold
+    const tokensSold = ethers.utils.formatUnits(await capico.tokensSold(), 18)
+    setTokensSold(tokensSold)
 
     setIsLoading(false)
   }
@@ -60,6 +78,19 @@ function App() {
   return(
     <Container>
     <Navigation/>
+
+    <h1 className='my-4 text-center'>Introducing CKOIN</h1>
+
+    {isLoading ? (
+        <loading />
+        ) : (
+        <>
+        
+        <p className='text-center'><strong>Current Price:</strong> {price} ETH</p>
+        <Progress maxTokens={maxTokens} tokensSold={tokensSold} />
+        </>
+      )}
+    
       <hr />  
       {account && (
     <Info account={account} accountBalance={accountBalance} />
@@ -69,3 +100,26 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
