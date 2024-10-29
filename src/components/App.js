@@ -85,7 +85,6 @@ function App() {
         <loading />
         ) : (
         <>
-        
         <p className='text-center'><strong>Current Price:</strong> {price} ETH</p>
         <Progress maxTokens={maxTokens} tokensSold={tokensSold} />
         </>
