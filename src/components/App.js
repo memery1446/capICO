@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { Container } from 'react-bootstrap';
 import { ethers } from 'ethers'
 
-import Navigation from './Navigation';  
+import Navigation from './Navigation';
+import Buy from './Buy';
+import Progress from './Progress';
 import Info from './Info';
 import Loading from './Loading';
-import Progress from './Progress';
 
  // ABI's
 import TOKEN_ABI from '../abis/Token.json'
@@ -82,10 +83,11 @@ function App() {
     <h1 className='my-4 text-center'>Introducing CKOIN</h1>
 
     {isLoading ? (
-        <loading />
+        <Loading />
         ) : (
         <>
         <p className='text-center'><strong>Current Price:</strong> {price} ETH</p>
+        <Buy provider={provider} price={price} capico={capico} setIsLoading={setIsLoading} />
         <Progress maxTokens={maxTokens} tokensSold={tokensSold} />
         </>
       )}
