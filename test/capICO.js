@@ -10,7 +10,7 @@
 
   describe('capICO', () => {
     let capico, token
-    let accounts, deployer, user1
+    let deployer, user1
 
     beforeEach(async () => {
         const capICO = await ethers.getContractFactory('capICO') // pull in contract from hardhat
@@ -57,10 +57,10 @@
         transaction = await capico.connect(user1).buyTokens(amount, { value: ether(10) })
         result = await transaction.wait()
       })
-    //   it('transfers tokens', async () => {
-    //     expect(await token.balanceOf(capico.address)).to.equal(tokens(999990))
-    //     expect(await token.balanceOf(user1.address)).to.equal(amount)
-    // })
+      it('transfers tokens', async () => {
+        expect(await token.balanceOf(capico.address)).to.equal(tokens(999990))
+        expect(await token.balanceOf(user1.address)).to.equal(amount)
+    })
       it('updates the contracts ether balance', async () => {
         expect(await ethers.provider.getBalance(capico.address)).to.equal(amount)
       })
@@ -102,13 +102,9 @@
         expect(await ethers.provider.getBalance(capico.address)).to.equal(amount)
       })
 
-      // it('updates the user token balance', async () => {
-      //   expect(await token.balanceOf(user1.address)).to.equal(amount)
-      // })
-
-      // it('confirms the owner is the deployer', async () => {
-      //   expect(await deployer.getAddress()).to.equal(msg.sender)
-      // })
+      it('updates the user token balance', async () => {
+        expect(await token.balanceOf(user1.address)).to.equal(amount)
+      })
     })
   })
 
@@ -150,10 +146,10 @@
       result = await transaction.wait()
     })
 
-    // it('transfers remaining tokens to owner', async () => {
-    //       expect(await token.balanceOf(capico.address)).to.equal(0)
-    //       expect(await token.balanceOf(deployer.address)).to.equal(tokens(999990))
-    //     })
+    it('transfers remaining tokens to owner', async () => {
+          expect(await token.balanceOf(capico.address)).to.equal(0)
+          expect(await token.balanceOf(deployer.address)).to.equal(tokens(999990))
+        })
 
     it('transfers ETH balance to owner', async () => {
       expect(await ethers.provider.getBalance(capico.address)).to.equal(0)
