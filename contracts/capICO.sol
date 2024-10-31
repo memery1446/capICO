@@ -12,12 +12,12 @@ contract capICO {
     uint256 public maxTokens;
     uint256 public tokensSold;
 
-    mapping(address => uint256) public tokensOwned;
+    mapping(address => uint256) public tokensPurchased;
 
 
 
 event Buy(uint256 amount, address buyer); 
-event Claimed(uint256 amount, address buyer);
+event tokensClaimed(uint256 amount);
 
 
 event Finalize(uint256 tokensSold, uint256 ethRaised);
