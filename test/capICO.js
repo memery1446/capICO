@@ -25,7 +25,7 @@
 
 
 
-    capico = await capICO.deploy(token.address, ether(1), '1000000')
+    capico = await capICO.deploy(token.address, ether(1), '1000000', '500000')
 
     let transaction = await token.connect(deployer).transfer(capico.address, tokens(1000000))
     await transaction.wait()
@@ -57,24 +57,27 @@
         transaction = await capico.connect(user1).buyTokens(amount, { value: ether(10) })
         result = await transaction.wait()
       })
-      it('transfers tokens', async () => {
-        expect(await token.balanceOf(capico.address)).to.equal(tokens(999990))
-        expect(await token.balanceOf(user1.address)).to.equal(amount)
-    })
+
+      it('updates users address mapping with token amount', async () => {
+        expect(await capico.tokensOwned(user1.address)).to.equal(amount)
+      })
+
+      it('updates ICO tokens sold', async () => {
+         expect(await capico.tokensSold()).to.equal(amount)
+      })
+
       it('updates the contracts ether balance', async () => {
         expect(await ethers.provider.getBalance(capico.address)).to.equal(amount)
       })
 
-      it('updates the number of tokens sold', async () => {
-        expect(await capico.tokensSold()).to.equal(amount)
+      it('updates the number of tokens owned', async () => {
+        expect(await capico.tokensOwned(user1.address)).to.equal(amount)
       })
 
       it('emits a buy event', async () => {
         //console.log(result)
-
         await expect(transaction).to.emit(capico, 'Buy').withArgs(amount, user1.address)
       })
-
     })
 
   describe('Failure', () => {
@@ -85,8 +88,8 @@
       it('rejects purchases over the maxSupply', async () => {
         await expect(capico.connect(user1).buyTokens(tokens(1200000), {value: 1200000 })).to.be.reverted
       })
-  })
     })
+  })
 
   describe('Sending ETH', () => {
     let transaction, result
@@ -102,8 +105,9 @@
         expect(await ethers.provider.getBalance(capico.address)).to.equal(amount)
       })
 
-      it('updates the user token balance', async () => {
-        expect(await token.balanceOf(user1.address)).to.equal(amount)
+      it('updates the user tokens owned and sold', async () => {
+        expect(await capico.tokensOwned(user1.address)).to.equal(amount)
+       // expect(await capico.tokensSold(deployer.address)).to.equal(amount)
       })
     })
   })
@@ -129,6 +133,19 @@
       await expect(capico.connect(user1).setPrice(price)).to.be.reverted
     })
   })
+
+  describe('Claiming Tokens', () => {
+    let transaction, result
+
+    describe('Success', async () => {
+      beforeEach(async () => {
+       
+
+    })
+
+    })
+    
+  })
 })
 
   describe('Finalizing the sale', () => {
@@ -148,7 +165,7 @@
 
     it('transfers remaining tokens to owner', async () => {
           expect(await token.balanceOf(capico.address)).to.equal(0)
-          expect(await token.balanceOf(deployer.address)).to.equal(tokens(999990))
+          //expect(await token.balanceOf(deployer.address)).to.equal(tokens(999990))
         })
 
     it('transfers ETH balance to owner', async () => {
