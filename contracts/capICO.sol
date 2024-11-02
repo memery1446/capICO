@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 import "./Token.sol";
 
+
+
+
+
 contract capICO {
     address owner;
     Token public token;
