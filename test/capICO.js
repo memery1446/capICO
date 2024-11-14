@@ -1,5 +1,7 @@
 const { expect } = require('chai');
 const { ethers } = require('hardhat');
+const { time } = require("@nomicfoundation/hardhat-network-helpers");
+const { BigNumber } = ethers;
 
 const tokens = (n) => {
   return ethers.utils.parseUnits(n.toString(), 'ether')
@@ -7,166 +9,243 @@ const tokens = (n) => {
 
 const ether = tokens
 
-describe('capICO', () => {
-  let token, capico
-  let deployer, user1
+describe('CapICO', () => {
+  let token, capico;
+  let deployer, user1, user2;
+  let startTime, endTime;
+  const day = 24 * 60 * 60;
 
   beforeEach(async () => {
-    const capICO = await ethers.getContractFactory('capICO')
+    // Get signers
+    [deployer, user1, user2] = await ethers.getSigners();
+
+    // Deploy Token
     const Token = await ethers.getContractFactory('Token')
+    token = await Token.deploy('Test Token', 'TEST', '1000000')
 
-    token = await Token.deploy('CKOIN Token', 'CKOIN', '1000000')
+    // Deploy CapICO
+    const CapICO = await ethers.getContractFactory('CapICO')
+    capico = await CapICO.deploy(
+      token.address,
+      ether(100),  // softCap
+      ether(0.1),  // minInvestment
+      ether(50)    // maxInvestment - increased to allow larger test purchases
+    )
 
-    accounts = await ethers.getSigners()
-    deployer = accounts[0]
-    user1 = accounts[1]
+    // Transfer tokens to CapICO contract
+    await token.transfer(capico.address, tokens(1000000))
 
-    capico = await capICO.deploy(token.address, ether(1), '1000000')
-
-    let transaction = await token.connect(deployer).transfer(capico.address, tokens(1000000))
-    await transaction.wait()
-  })
+    // Get current block timestamp
+    const latestTime = await time.latest();
+    startTime = latestTime + 100;
+    endTime = startTime + day;
+  });
 
   describe('Deployment', () => {
-
-    it('sends tokens to the Crowdsale contract', async () => {
-      expect(await token.balanceOf(capico.address)).to.equal(tokens(1000000))
-    })
-
-    it('returns the price', async () => {
-      expect(await capico.price()).to.equal(ether(1))
-    })
-
-    it('returns token address', async () => {
+    it('has correct token address', async () => {
       expect(await capico.token()).to.equal(token.address)
     })
 
-  })
-
-  describe('Buying Tokens', () => {
-    let transaction, result
-    let amount = tokens(10)
-
-    describe('Success', () => {
-
-      beforeEach(async () => {
-        transaction = await capico.connect(user1).buyTokens(amount, { value: ether(10) })
-        result = await transaction.wait()
-      })
-
-      it('transfers tokens', async () => {
-        expect(await token.balanceOf(capico.address)).to.equal(tokens(999990))
-        expect(await token.balanceOf(user1.address)).to.equal(amount)
-      })
-
-      it('updates tokensSold', async () => {
-        expect(await capico.tokensSold()).to.equal(amount)
-      })
-
-      it('emits a buy event', async () => {
-        // --> https://hardhat.org/hardhat-chai-matchers/docs/reference#.emit
-        await expect(transaction).to.emit(capico, "Buy")
-          .withArgs(amount, user1.address)
-      })
-
+    it('has correct soft cap', async () => {
+      expect(await capico.softCap()).to.equal(ether(100))
     })
 
-    describe('Failure', () => {
-
-      it('rejects insufficent ETH', async () => {
-        await expect(capico.connect(user1).buyTokens(tokens(10), { value: 0 })).to.be.reverted
-      })
-
+    it('has correct investment limits', async () => {
+      expect(await capico.minInvestment()).to.equal(ether(0.1))
+      expect(await capico.maxInvestment()).to.equal(ether(50))
     })
+  });
 
-  })
+  describe('Token Purchase', () => {
+    beforeEach(async () => {
+      await capico.addTier(
+        ether(1),           // price
+        tokens(1000),       // maxTokens
+        startTime,          // startTime
+        endTime            // endTime
+      );
+      await capico.updateWhitelist([user1.address], true);
+      await time.increaseTo(startTime + 1);
+    });
 
-  describe('Sending ETH', () => {
-    let transaction, result
-    let amount = ether(10)
+    describe('Success cases', () => {
+      it('allows whitelisted user to buy tokens', async () => {
+        await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+        expect(await token.balanceOf(user1.address)).to.equal(tokens(5)); // 50% immediate
+      });
 
-    describe('Success', () => {
+      it('updates total tokens sold', async () => {
+        await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+        expect(await capico.totalTokensSold()).to.equal(tokens(10));
+      });
 
-      beforeEach(async () => {
-        transaction = await user1.sendTransaction({ to: capico.address, value: amount })
-        result = await transaction.wait()
-      })
+      it('updates tier token count', async () => {
+        await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+        const tier = await capico.tiers(0);
+        expect(tier.tokensSold).to.equal(tokens(10));
+      });
+    });
 
-      it('updates contracts ether balance', async () => {
-        expect(await ethers.provider.getBalance(capico.address)).to.equal(amount)
-      })
+    describe('Failure cases', () => {
+      it('prevents purchase from non-whitelisted address', async () => {
+        await expect(
+          capico.connect(user2).buyTokens(tokens(10), { value: ether(10) })
+        ).to.be.revertedWith('Not whitelisted');
+      });
 
-      it('updates user token balance', async () => {
-        expect(await token.balanceOf(user1.address)).to.equal(amount)
-      })
+      it('prevents purchase below minimum investment', async () => {
+        await expect(
+          capico.connect(user1).buyTokens(tokens(0.05), { value: ether(0.05) })
+        ).to.be.revertedWith('Below min investment');
+      });
 
-    })
-  })
+      it('prevents purchase with incorrect payment amount', async () => {
+        await expect(
+          capico.connect(user1).buyTokens(tokens(10), { value: ether(9) })
+        ).to.be.revertedWith('Incorrect payment');
+      });
+    });
 
-  describe('Updating Price', () => {
-    let transaction, result
-    let price = ether(2)
+    describe('Distribution schedule', () => {
+      it('creates correct distribution schedule', async () => {
+        await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+        
+        const distribution1 = await capico.distributions(user1.address, 0);
+        const distribution2 = await capico.distributions(user1.address, 1);
+        
+        expect(distribution1.amount).to.equal(tokens(2.5)); // 25%
+        expect(distribution2.amount).to.equal(tokens(2.5)); // 25%
+        expect(distribution1.claimed).to.be.false;
+        expect(distribution2.claimed).to.be.false;
+      });
 
-    describe('Success', () => {
+      it('schedules correct release times', async () => {
+        const beforePurchase = await time.latest();
+        await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+        
+        const distribution1 = await capico.distributions(user1.address, 0);
+        const distribution2 = await capico.distributions(user1.address, 1);
+        
+        expect(distribution1.releaseTime).to.be.closeTo(
+          BigNumber.from(beforePurchase).add(30 * day),
+          2
+        );
+        
+        expect(distribution2.releaseTime).to.be.closeTo(
+          BigNumber.from(beforePurchase).add(60 * day),
+          2
+        );
+      });
+    });
+  });
 
-      beforeEach(async () => {
-        transaction = await capico.connect(deployer).setPrice(ether(2))
-        result = await transaction.wait()
-      })
+  describe('Refunds', () => {
+    beforeEach(async () => {
+      await capico.addTier(
+        ether(1),           // price
+        tokens(1000),       // maxTokens
+        startTime,          // startTime
+        endTime            // endTime
+      );
+      await capico.updateWhitelist([user1.address, user2.address], true);
+      await time.increaseTo(startTime + 1);
+    });
 
-      it('updates the price', async () => {
-        expect(await capico.price()).to.equal(ether(2))
-      })
+    describe('Success cases', () => {
+      it('allows refund if soft cap not met', async () => {
+        await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+        await time.increaseTo(endTime + 1);
+        
+        const balanceBefore = await ethers.provider.getBalance(user1.address);
+        const tx = await capico.connect(user1).claimRefund();
+        const receipt = await tx.wait();
+        const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+        const balanceAfter = await ethers.provider.getBalance(user1.address);
+        
+        expect(balanceAfter.add(gasCost).sub(balanceBefore)).to.equal(ether(10));
+      });
+    });
 
-    })
+    describe('Failure cases', () => {
+      it('prevents refund before ICO ends', async () => {
+        await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+        await expect(
+          capico.connect(user1).claimRefund()
+        ).to.be.revertedWith('ICO not ended');
+      });
 
-    describe('Failure', () => {
+      it('prevents refund if soft cap met', async () => {
+        // Buy enough tokens to meet soft cap
+        await capico.connect(user1).buyTokens(tokens(50), { value: ether(50) });
+        await capico.connect(user2).buyTokens(tokens(50), { value: ether(50) });
+        
+        await time.increaseTo(endTime + 1);
+        
+        await expect(
+          capico.connect(user1).claimRefund()
+        ).to.be.revertedWith('Soft cap reached');
+      });
 
-      it('prevents non-owner from updating price', async () => {
-        await expect(capico.connect(user1).setPrice(price)).to.be.reverted
-      })
+      it('prevents refund for non-investors', async () => {
+        await time.increaseTo(endTime + 1);
+        await expect(
+          capico.connect(user2).claimRefund()
+        ).to.be.revertedWith('No investment');
+      });
+    });
+  });
 
-    })
-  })
+  describe('Emergency Functions', () => {
+    beforeEach(async () => {
+      await capico.addTier(
+        ether(1),
+        tokens(1000),
+        startTime,
+        endTime
+      );
+      await capico.updateWhitelist([user1.address], true);
+      await time.increaseTo(startTime + 1);
+    });
 
-  describe('Finalzing Sale', () => {
-    let transaction, result
-    let amount = tokens(10)
-    let value = ether(10)
+    it('allows owner to pause', async () => {
+      await capico.pause();
+      expect(await capico.paused()).to.be.true;
+    });
 
-    describe('Success', async () => {
+    it('prevents purchases while paused', async () => {
+      await capico.pause();
+      await expect(
+        capico.connect(user1).buyTokens(tokens(10), { value: ether(10) })
+      ).to.be.revertedWith('Pausable: paused');
+    });
+  });
 
-      beforeEach(async () => {
-        transaction = await capico.connect(user1).buyTokens(amount, { value: value })
-        result = await transaction.wait()
+  describe('Finalization', () => {
+    beforeEach(async () => {
+      await capico.addTier(
+        ether(1),
+        tokens(1000),
+        startTime,
+        endTime
+      );
+      await capico.updateWhitelist([user1.address, user2.address], true);
+      await time.increaseTo(startTime + 1);
+    });
 
-        transaction = await capico.connect(deployer).finalize()
-        result = await transaction.wait()
-      })
+    it('allows finalization after end time if soft cap met', async () => {
+      await capico.connect(user1).buyTokens(tokens(50), { value: ether(50) });
+      await capico.connect(user2).buyTokens(tokens(50), { value: ether(50) });
+      await time.increaseTo(endTime + 1);
+      await capico.finalize();
+      expect(await capico.isFinalized()).to.be.true;
+    });
 
-      it('transfers remaining tokens to owner', async () => {
-        expect(await token.balanceOf(capico.address)).to.equal(0)
-        expect(await token.balanceOf(deployer.address)).to.equal(tokens(999990))
-      })
-
-      it('transfers ETH balance to owner', async () => {
-        expect(await ethers.provider.getBalance(capico.address)).to.equal(0)
-      })
-
-      it('emits Finalize event', async () => {
-        // --> https://hardhat.org/hardhat-chai-matchers/docs/reference#.emit
-        await expect(transaction).to.emit(capico, "Finalize")
-          .withArgs(amount, value)
-      })
-
-    })
-
-    describe('Failure', () => {
-
-      it('prevents non-owner from finalizing', async () => {
-        await expect(capico.connect(user1).finalize()).to.be.reverted
-      })
-
-    })
-  })
-})
+    it('prevents finalization if soft cap not met', async () => {
+      await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+      await time.increaseTo(endTime + 1);
+      await expect(
+        capico.finalize()
+      ).to.be.revertedWith('Soft cap not reached');
+    });
+  });
+});
