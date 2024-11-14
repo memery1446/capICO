@@ -9,64 +9,64 @@ const tokens = (n) => {
 
 const ether = tokens
 
-describe('CapICO', () => {
-  let token, capico;
-  let deployer, user1, user2;
-  let startTime, endTime;
-  const day = 24 * 60 * 60;
+    describe('CapICO', () => {
+      let token, capico;
+      let deployer, user1, user2;
+      let startTime, endTime;
+      const day = 24 * 60 * 60;
 
-  beforeEach(async () => {
-    // Get signers
-    [deployer, user1, user2] = await ethers.getSigners();
+      beforeEach(async () => {
+        // Get signers
+        [deployer, user1, user2] = await ethers.getSigners();
 
-    // Deploy Token
-    const Token = await ethers.getContractFactory('Token')
-    token = await Token.deploy('Test Token', 'TEST', '1000000')
+        // Deploy Token
+        const Token = await ethers.getContractFactory('Token')
+        token = await Token.deploy('Test Token', 'TEST', '1000000')
 
-    // Deploy CapICO
-    const CapICO = await ethers.getContractFactory('CapICO')
-    capico = await CapICO.deploy(
-      token.address,
-      ether(100),  // softCap
-      ether(0.1),  // minInvestment
-      ether(50)    // maxInvestment - increased to allow larger test purchases
-    )
+        // Deploy CapICO
+        const CapICO = await ethers.getContractFactory('CapICO')
+        capico = await CapICO.deploy(
+          token.address,
+          ether(100),  // softCap
+          ether(0.1),  // minInvestment
+          ether(50)    // maxInvestment - increased to allow larger test purchases
+        )
 
-    // Transfer tokens to CapICO contract
-    await token.transfer(capico.address, tokens(1000000))
+        // Transfer tokens to CapICO contract
+        await token.transfer(capico.address, tokens(1000000))
 
-    // Get current block timestamp
-    const latestTime = await time.latest();
-    startTime = latestTime + 100;
-    endTime = startTime + day;
-  });
+        // Get current block timestamp
+        const latestTime = await time.latest();
+        startTime = latestTime + 100;
+        endTime = startTime + day;
+      });
 
-  describe('Deployment', () => {
-    it('has correct token address', async () => {
-      expect(await capico.token()).to.equal(token.address)
-    })
+    describe('Deployment', () => {
+      it('has correct token address', async () => {
+        expect(await capico.token()).to.equal(token.address)
+      })
 
-    it('has correct soft cap', async () => {
-      expect(await capico.softCap()).to.equal(ether(100))
-    })
+      it('has correct soft cap', async () => {
+        expect(await capico.softCap()).to.equal(ether(100))
+      })
 
-    it('has correct investment limits', async () => {
-      expect(await capico.minInvestment()).to.equal(ether(0.1))
-      expect(await capico.maxInvestment()).to.equal(ether(50))
-    })
-  });
+      it('has correct investment limits', async () => {
+        expect(await capico.minInvestment()).to.equal(ether(0.1))
+        expect(await capico.maxInvestment()).to.equal(ether(50))
+      })
+      });
 
-  describe('Token Purchase', () => {
-    beforeEach(async () => {
-      await capico.addTier(
-        ether(1),           // price
-        tokens(1000),       // maxTokens
-        startTime,          // startTime
-        endTime            // endTime
-      );
-      await capico.updateWhitelist([user1.address], true);
-      await time.increaseTo(startTime + 1);
-    });
+    describe('Token Purchase', () => {
+      beforeEach(async () => {
+        await capico.addTier(
+          ether(1),           // price
+          tokens(1000),       // maxTokens
+          startTime,          // startTime
+          endTime            // endTime
+        );
+        await capico.updateWhitelist([user1.address], true);
+        await time.increaseTo(startTime + 1);
+      });
 
     describe('Success cases', () => {
       it('allows whitelisted user to buy tokens', async () => {
@@ -248,4 +248,83 @@ describe('CapICO', () => {
       ).to.be.revertedWith('Soft cap not reached');
     });
   });
+
+  describe('Token Distribution', () => {
+  beforeEach(async () => {
+    await capico.addTier(
+      ether(1),
+      tokens(1000),
+      startTime,
+      endTime
+    );
+    await capico.updateWhitelist([user1.address], true);
+    await time.increaseTo(startTime + 1);
+  });
+
+  it('allows claiming distribution after release time', async () => {
+    await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+    await time.increase(30 * day + 1);
+    
+    await capico.connect(user1).claimDistribution(0);
+    expect(await token.balanceOf(user1.address)).to.equal(tokens(7.5)); // Initial 50% + first 25%
+  });
+
+  it('prevents claiming distribution before release time', async () => {
+    await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+    await expect(
+      capico.connect(user1).claimDistribution(0)
+    ).to.be.revertedWith('Too early');
+  });
+
+  it('prevents claiming distribution twice', async () => {
+    await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+    await time.increase(30 * day + 1);
+    await capico.connect(user1).claimDistribution(0);
+    await expect(
+      capico.connect(user1).claimDistribution(0)
+    ).to.be.revertedWith('Already claimed');
+  });
+});
+
+describe('Tier Management', () => {
+  it('prevents adding tier with invalid times', async () => {
+    await expect(
+      capico.addTier(ether(1), tokens(1000), endTime, startTime)
+    ).to.be.revertedWith('Invalid end time');
+  });
+
+  it('prevents adding overlapping tiers', async () => {
+    const futureStart = (await time.latest()) + day;
+    await capico.addTier(ether(1), tokens(1000), futureStart, futureStart + day);
+    await expect(
+      capico.addTier(ether(1), tokens(1000), futureStart - 1, futureStart + day + 1)
+    ).to.be.revertedWith('Overlapping tiers');
+  });
+
+  it('prevents advancing tier before current ends', async () => {
+    await capico.addTier(ether(1), tokens(1000), startTime, endTime);
+    await capico.addTier(ether(2), tokens(1000), endTime + 1, endTime + day);
+    await expect(
+      capico.advanceTier()
+    ).to.be.revertedWith('Current tier not ended');
+  });
+});
+
+describe('Receive Function', () => {
+  beforeEach(async () => {
+    await capico.addTier(ether(1), tokens(1000), startTime, endTime);
+    await capico.updateWhitelist([user1.address], true);
+    await time.increaseTo(startTime + 1);
+  });
+
+  it('handles direct ETH transfers correctly', async () => {
+    await user1.sendTransaction({
+      to: capico.address,
+      value: ether(10)
+    });
+    
+    expect(await token.balanceOf(user1.address)).to.equal(tokens(5)); // 50% immediate
+    expect(await capico.totalTokensSold()).to.equal(tokens(10));
+  });
+});
 });

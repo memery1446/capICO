@@ -1,79 +1,68 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "hardhat/console.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract Token {
-    string public name;
-    string public symbol;
-    uint256 public constant decimals = 18;  // Made constant since it never changes
-    uint256 public totalSupply;
-    
-    mapping(address => uint256) public balanceOf;
-    mapping(address => mapping(address => uint256)) public allowance;
-    
-    event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
-    
+contract Token is ERC20, ERC20Pausable, Ownable, ReentrancyGuard {
+    uint256 public constant MAX_SUPPLY = 1_000_000_000 * (10**18); // 1 billion tokens
+    uint256 public immutable launchTime;
+    mapping(address => uint256) public lastTransferTime;
+    uint256 public constant TRANSFER_COOLDOWN = 1 days;
+    uint256 public constant MAX_TRANSFER_AMOUNT = 100_000 * (10**18); // 100k tokens
+
+    event TransferLimitUpdated(uint256 newLimit);
+    event CooldownUpdated(uint256 newCooldown);
+
     constructor(
-        string memory _name,
-        string memory _symbol,
-        uint256 _totalSupply
-    ) {
-        name = _name;
-        symbol = _symbol;
-        totalSupply = _totalSupply * (10**decimals);
-        balanceOf[msg.sender] = totalSupply;
+        string memory name,
+        string memory symbol,
+        uint256 initialSupply
+    ) ERC20(name, symbol) {
+        require(initialSupply * (10**18) <= MAX_SUPPLY, "Exceeds max supply");
+        _mint(msg.sender, initialSupply * (10**18));
+        launchTime = block.timestamp;
     }
-    
-    function transfer(address to, uint256 value)  // Removed pointer syntax
-        public
-        returns (bool success)
-    {
-        require(balanceOf[msg.sender] >= value, "Insufficient balance");
-        _transfer(msg.sender, to, value);
-        return true;
-    }
-    
-    function _transfer(
+
+    function _beforeTokenTransfer(
         address from,
         address to,
-        uint256 value
-    ) internal {
-        require(to != address(0), "Cannot transfer to zero address");
-        require(value <= balanceOf[from], "Insufficient balance");
+        uint256 amount
+    ) internal virtual override(ERC20, ERC20Pausable) {
+        super._beforeTokenTransfer(from, to, amount);
         
-        unchecked {
-            balanceOf[from] = balanceOf[from] - value;
-            balanceOf[to] = balanceOf[to] + value;
-        }
+        // Skip checks for minting and burning
+        if (from == address(0) || to == address(0)) return;
         
-        emit Transfer(from, to, value);
+        // Skip checks for contract owner
+        if (owner() == from) return;
+
+        require(amount <= MAX_TRANSFER_AMOUNT, "Transfer amount too large");
+        require(
+            lastTransferTime[from] + TRANSFER_COOLDOWN <= block.timestamp,
+            "Transfer cooldown active"
+        );
+        
+        lastTransferTime[from] = block.timestamp;
     }
-    
-    function approve(address spender, uint256 value)  // Removed pointer syntax
-        public
-        returns(bool success)
-    {
-        require(spender != address(0), "Cannot approve zero address");
-        allowance[msg.sender][spender] = value;
-        emit Approval(msg.sender, spender, value);
-        return true;
+
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
     }
-    
-    function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    )
-        public
-        returns (bool success)
-    {
-        require(value <= balanceOf[from], "Insufficient balance");
-        require(value <= allowance[from][msg.sender], "Insufficient allowance");
-        
-        allowance[from][msg.sender] = allowance[from][msg.sender] - value;
-        _transfer(from, to, value);
-        return true;
+
+    function mint(address to, uint256 amount) external onlyOwner {
+        require(totalSupply() + amount <= MAX_SUPPLY, "Exceeds max supply");
+        _mint(to, amount);
+    }
+
+    // For CapICO contract emergency control
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }
