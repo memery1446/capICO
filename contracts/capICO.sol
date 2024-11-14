@@ -60,7 +60,6 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         maxInvestment = _maxInvestment;
     }
     
-    // Tier Management
     function addTier(
         uint256 _price,
         uint256 _maxTokens,
@@ -72,9 +71,7 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         require(_price > 0, "Invalid price");
         require(_maxTokens > 0, "Invalid max tokens");
         
-        // If adding first tier, ensure it starts in the future
         if (tiers.length > 0) {
-            // Ensure new tier starts after previous tier ends
             require(_startTime > tiers[tiers.length - 1].endTime, "Overlapping tiers");
         }
         
@@ -100,7 +97,6 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         emit TierAdvanced(currentTier);
     }
     
-    // Whitelist Management
     function updateWhitelist(address[] calldata users, bool status) external onlyOwner {
         for (uint256 i = 0; i < users.length; i++) {
             whitelist[users[i]] = status;
@@ -108,50 +104,45 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         }
     }
     
-    // Purchase Function
     function buyTokens(uint256 _amount) public payable nonReentrant whenNotPaused {
-      require(whitelist[msg.sender], "Not whitelisted");
-      
-      Tier storage tier = tiers[currentTier];
-      require(block.timestamp >= tier.startTime && block.timestamp <= tier.endTime, "Tier not active");
-      require(tier.tokensSold + _amount <= tier.maxTokens, "Exceeds tier capacity");
-      
-      uint256 cost = (_amount * tier.price) / 1e18;
-      require(msg.value == cost, "Incorrect payment");
-      require(msg.value >= minInvestment, "Below min investment");
-      require(investments[msg.sender] + msg.value <= maxInvestment, "Exceeds max investment");
-      
-      investments[msg.sender] += msg.value;
-      tier.tokensSold += _amount;
-      totalTokensSold += _amount;
-      
-      // Get current block timestamp for consistent timing
-      uint256 purchaseTime = block.timestamp;
-      
-      // Immediate distribution (50%)
-      uint256 immediate = _amount / 2;
-      require(token.transfer(msg.sender, immediate), "Transfer failed");
-      
-      // Schedule future distributions (25% each)
-      uint256 delayed = _amount / 4;
-      distributions[msg.sender].push(Distribution({
-          amount: delayed,
-          releaseTime: purchaseTime + 30 days,
-          claimed: false
-      }));
-      
-      distributions[msg.sender].push(Distribution({
-          amount: delayed,
-          releaseTime: purchaseTime + 60 days,
-          claimed: false
-      }));
-      
-      emit Buy(msg.sender, _amount, currentTier);
-      emit DistributionScheduled(msg.sender, delayed, purchaseTime + 30 days);
-      emit DistributionScheduled(msg.sender, delayed, purchaseTime + 60 days);
-  }
+        require(whitelist[msg.sender], "Not whitelisted");
+        
+        Tier storage tier = tiers[currentTier];
+        require(block.timestamp >= tier.startTime && block.timestamp <= tier.endTime, "Tier not active");
+        require(tier.tokensSold + _amount <= tier.maxTokens, "Exceeds tier capacity");
+        
+        uint256 cost = (_amount * tier.price) / 1e18;
+        require(msg.value == cost, "Incorrect payment");
+        require(msg.value >= minInvestment, "Below min investment");
+        require(investments[msg.sender] + msg.value <= maxInvestment, "Exceeds max investment");
+        
+        investments[msg.sender] += msg.value;
+        tier.tokensSold += _amount;
+        totalTokensSold += _amount;
+        
+        uint256 purchaseTime = block.timestamp;
+        
+        uint256 immediate = _amount / 2;
+        require(token.transfer(msg.sender, immediate), "Transfer failed");
+        
+        uint256 delayed = _amount / 4;
+        distributions[msg.sender].push(Distribution({
+            amount: delayed,
+            releaseTime: purchaseTime + 30 days,
+            claimed: false
+        }));
+        
+        distributions[msg.sender].push(Distribution({
+            amount: delayed,
+            releaseTime: purchaseTime + 60 days,
+            claimed: false
+        }));
+        
+        emit Buy(msg.sender, _amount, currentTier);
+        emit DistributionScheduled(msg.sender, delayed, purchaseTime + 30 days);
+        emit DistributionScheduled(msg.sender, delayed, purchaseTime + 60 days);
+    }
     
-    // Distribution Claim
     function claimDistribution(uint256 index) external nonReentrant {
         Distribution storage dist = distributions[msg.sender][index];
         require(!dist.claimed, "Already claimed");
@@ -163,7 +154,6 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         emit TokensClaimed(msg.sender, dist.amount);
     }
     
-    // Refund Function
     function claimRefund() external nonReentrant {
         require(block.timestamp > tiers[tiers.length - 1].endTime, "ICO not ended");
         require(!isFinalized, "ICO finalized");
@@ -178,7 +168,6 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         emit Refunded(msg.sender, investment);
     }
     
-    // Emergency Functions
     function pause() external onlyOwner {
         _pause();
     }
@@ -194,13 +183,13 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         
         isFinalized = true;
         
-        // Transfer remaining tokens to owner
         uint256 remainingTokens = token.balanceOf(address(this));
         if (remainingTokens > 0) {
-            require(token.transfer(owner(), remainingTokens), "Token transfer failed");
+            uint256 contractBalance = token.balanceOf(address(this));
+            uint256 transferAmount = remainingTokens > contractBalance ? contractBalance : remainingTokens;
+            require(token.transfer(owner(), transferAmount), "Token transfer failed");
         }
         
-        // Transfer ETH to owner
         uint256 value = address(this).balance;
         (bool sent, ) = owner().call{value: value}("");
         require(sent, "Failed to send ETH");

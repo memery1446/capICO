@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
 import styled from 'styled-components';
 
 const DistributionWrapper = styled.div`
@@ -30,12 +31,18 @@ export default function DistributionClaim({ capicoContract, account }) {
       if (!capicoContract || !account) return;
 
       try {
-        const distributionCount = await capicoContract.distributions(account, 0, {});
+        let index = 0;
         const fetchedDistributions = [];
-
-        for (let i = 0; i < distributionCount.toNumber(); i++) {
-          const distribution = await capicoContract.distributions(account, i, {});
-          fetchedDistributions.push(distribution);
+        
+        while (true) {
+          try {
+            const distribution = await capicoContract.distributions(account, index);
+            fetchedDistributions.push(distribution);
+            index++;
+          } catch (error) {
+            // If we get an error, assume we've reached the end of the distributions
+            break;
+          }
         }
 
         setDistributions(fetchedDistributions);
@@ -51,10 +58,10 @@ export default function DistributionClaim({ capicoContract, account }) {
 
   const handleClaim = async (index) => {
     try {
-      const tx = await capicoContract.claimDistribution(index, {});
+      const tx = await capicoContract.claimDistribution(index);
       await tx.wait();
       // Refresh distributions after claiming
-      const updatedDistribution = await capicoContract.distributions(account, index, {});
+      const updatedDistribution = await capicoContract.distributions(account, index);
       setDistributions(prevDistributions => {
         const newDistributions = [...prevDistributions];
         newDistributions[index] = updatedDistribution;
@@ -78,7 +85,7 @@ export default function DistributionClaim({ capicoContract, account }) {
       ) : (
         distributions.map((dist, index) => (
           <div key={index}>
-            <p>Amount: {dist.amount.toString()} tokens</p>
+            <p>Amount: {ethers.utils.formatEther(dist.amount)} tokens</p>
             <p>Release Time: {new Date(dist.releaseTime.toNumber() * 1000).toLocaleString()}</p>
             <p>Claimed: {dist.claimed ? 'Yes' : 'No'}</p>
             {!dist.claimed && Date.now() >= dist.releaseTime.toNumber() * 1000 && (
@@ -90,3 +97,4 @@ export default function DistributionClaim({ capicoContract, account }) {
     </DistributionWrapper>
   );
 }
+

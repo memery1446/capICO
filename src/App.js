@@ -23,6 +23,7 @@ const ContentWrapper = styled.div`
 function App() {
   const [capicoContract, setCapicoContract] = useState(null);
   const [account, setAccount] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const initContract = async () => {
@@ -32,8 +33,10 @@ function App() {
           const signer = provider.getSigner();
           const contract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, signer);
           setCapicoContract(contract);
+          setError(null);
         } catch (error) {
           console.error("Failed to initialize contract:", error);
+          setError("Failed to initialize the CapICO contract. Please try refreshing the page.");
         }
       }
     };
@@ -50,6 +53,7 @@ function App() {
       <ContentWrapper>
         <h1>CapICO Dashboard</h1>
         <WalletConnection onConnect={handleWalletConnect} />
+        {error && <p style={{ color: 'red' }}>{error}</p>}
         {account && capicoContract ? (
           <>
             <TierInfo capicoContract={capicoContract} />
@@ -66,3 +70,4 @@ function App() {
 }
 
 export default App;
+
