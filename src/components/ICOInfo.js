@@ -3,7 +3,7 @@ import { useSelector } from 'react-redux';
 import styled from 'styled-components';
 
 const InfoWrapper = styled.div`
-  background-color: #2a2a2a;
+  background-color: #594d5b;
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;

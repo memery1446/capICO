@@ -8,7 +8,7 @@ import PurchaseForm from './components/PurchaseForm';
 import AccountInfo from './components/AccountInfo';
 
 const AppWrapper = styled.div`
-  background-color: #1a1a1a;
+  background-color: #588bae;
   color: #ffffff;
   min-height: 100vh;
   display: flex;

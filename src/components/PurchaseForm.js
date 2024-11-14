@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { buyTokens } from '../redux/actions';
 
 const FormWrapper = styled.form`
-  background-color: #2a2a2a;
+  background-color: #594d5b;
   border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
@@ -19,7 +19,7 @@ const Input = styled.input`
 `;
 
 const Button = styled.button`
-  background-color: #043927;
+  background-color: #3b8132;
   color: #ffffff;
   border: none;
   border-radius: 4px;
