@@ -1,51 +1,68 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
 import styled from 'styled-components';
-import { loadBlockchainData } from './redux/actions';
-import Header from './components/Header';
-import ICOInfo from './components/ICOInfo';
+import TierInfo from './components/TierInfo';
+import WhitelistCheck from './components/WhitelistCheck';
+import DistributionClaim from './components/DistributionClaim';
+import WalletConnection from './components/WalletConnection';
 import PurchaseForm from './components/PurchaseForm';
-import AccountInfo from './components/AccountInfo';
+import { CAPICO_ADDRESS, CAPICO_ABI } from './config';
 
 const AppWrapper = styled.div`
-  background-color: #588bae;
-  color: #ffffff;
+  background-color: #1a1a1a;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  color: white;
+  padding: 20px;
 `;
 
 const ContentWrapper = styled.div`
   max-width: 800px;
-  width: 100%;
-  padding: 20px;
+  margin: 0 auto;
 `;
 
-export default function App() {
-  const dispatch = useDispatch();
-  const { isLoading, error } = useSelector(state => state.blockchain);
+function App() {
+  const [capicoContract, setCapicoContract] = useState(null);
+  const [account, setAccount] = useState(null);
 
   useEffect(() => {
-    dispatch(loadBlockchainData());
-  }, [dispatch]);
+    const initContract = async () => {
+      if (typeof window.ethereum !== 'undefined' && account) {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const contract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, signer);
+          setCapicoContract(contract);
+        } catch (error) {
+          console.error("Failed to initialize contract:", error);
+        }
+      }
+    };
 
-  if (isLoading) {
-    return <AppWrapper>Loading...</AppWrapper>;
-  }
+    initContract();
+  }, [account]);
 
-  if (error) {
-    return <AppWrapper>Error: {error}</AppWrapper>;
-  }
+  const handleWalletConnect = (connectedAccount) => {
+    setAccount(connectedAccount);
+  };
 
   return (
     <AppWrapper>
-      <Header />
       <ContentWrapper>
-        <ICOInfo />
-        <PurchaseForm />
-        <AccountInfo />
+        <h1>CapICO Dashboard</h1>
+        <WalletConnection onConnect={handleWalletConnect} />
+        {account && capicoContract ? (
+          <>
+            <TierInfo capicoContract={capicoContract} />
+            <WhitelistCheck capicoContract={capicoContract} account={account} />
+            <PurchaseForm capicoContract={capicoContract} account={account} />
+            <DistributionClaim capicoContract={capicoContract} account={account} />
+          </>
+        ) : (
+          <p>Please connect your wallet to interact with the CapICO dashboard.</p>
+        )}
       </ContentWrapper>
     </AppWrapper>
   );
 }
+
+export default App;
