@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { ethers } from 'ethers';
 
-const WhitelistManagementWrapper = styled.div`
+const WhitelistWrapper = styled.div`
   background-color: #2a2a2a;
   border-radius: 8px;
   padding: 20px;
@@ -25,57 +26,89 @@ const Button = styled.button`
   font-size: 14px;
   margin: 4px 2px;
   cursor: pointer;
+  &:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
 `;
 
 export default function WhitelistManagement({ capicoContract, account }) {
-  const [address, setAddress] = useState('');
-  const [status, setStatus] = useState(true);
-  const [message, setMessage] = useState('');
+  const [addresses, setAddresses] = useState('');
+  const [isAdding, setIsAdding] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
 
-  const handleWhitelist = async (e) => {
-    e.preventDefault();
-    setMessage('');
+  useEffect(() => {
+    const checkOwnership = async () => {
+      if (capicoContract && account) {
+        try {
+          const owner = await capicoContract.owner();
+          setIsOwner(owner.toLowerCase() === account.toLowerCase());
+        } catch (error) {
+          console.error("Error checking ownership:", error);
+        }
+      }
+    };
 
-    if (!ethers.utils.isAddress(address)) {
-      setMessage('Invalid address');
+    checkOwnership();
+  }, [capicoContract, account]);
+
+  const handleWhitelistUpdate = async () => {
+    if (!capicoContract || !isOwner) {
+      setError("You don't have permission to update the whitelist");
       return;
     }
 
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const tx = await capicoContract.updateWhitelist([address], status);
+      const addressList = addresses.split(',').map(addr => addr.trim());
+      
+      // Validate addresses
+      addressList.forEach(addr => {
+        if (!ethers.utils.isAddress(addr)) {
+          throw new Error(`Invalid address: ${addr}`);
+        }
+      });
+
+      const tx = await capicoContract.updateWhitelist(addressList, isAdding);
       await tx.wait();
-      setMessage(`Address ${address} has been ${status ? 'whitelisted' : 'removed from whitelist'}`);
-      setAddress('');
+      setAddresses('');
+      alert(`Addresses ${isAdding ? 'added to' : 'removed from'} whitelist successfully!`);
     } catch (error) {
       console.error('Error updating whitelist:', error);
-      setMessage('Failed to update whitelist. Make sure you are the contract owner.');
+      setError(`Failed to ${isAdding ? 'add' : 'remove'} addresses ${isAdding ? 'to' : 'from'} whitelist. ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  if (!isOwner) {
+    return null; // Don't render anything if not the owner
+  }
+
   return (
-    <WhitelistManagementWrapper>
-      <h3>Manage Whitelist</h3>
-      <form onSubmit={handleWhitelist}>
-        <Input
-          type="text"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Enter address to whitelist/unwhitelist"
-        />
-        <div>
-          <label>
-            <input
-              type="checkbox"
-              checked={status}
-              onChange={(e) => setStatus(e.target.checked)}
-            />
-            Whitelist Status
-          </label>
-        </div>
-        <Button type="submit">Update Whitelist</Button>
-      </form>
-      {message && <p>{message}</p>}
-    </WhitelistManagementWrapper>
+    <WhitelistWrapper>
+      <h3>Whitelist Management</h3>
+      <Input
+        type="text"
+        placeholder="Enter addresses separated by commas"
+        value={addresses}
+        onChange={(e) => setAddresses(e.target.value)}
+      />
+      <Button onClick={() => setIsAdding(true)} disabled={isLoading}>
+        Set to Add
+      </Button>
+      <Button onClick={() => setIsAdding(false)} disabled={isLoading}>
+        Set to Remove
+      </Button>
+      <Button onClick={handleWhitelistUpdate} disabled={isLoading || !addresses.trim()}>
+        {isLoading ? 'Processing...' : `${isAdding ? 'Add' : 'Remove'} Addresses`}
+      </Button>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+    </WhitelistWrapper>
   );
 }
 

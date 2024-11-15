@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import SelfWhitelist from './SelfWhitelist';
 
 const WhitelistWrapper = styled.div`
   background-color: #2a2a2a;
@@ -9,30 +8,40 @@ const WhitelistWrapper = styled.div`
   margin-bottom: 20px;
 `;
 
+const StatusText = styled.p`
+  font-size: 16px;
+  font-weight: bold;
+  color: ${props => props.$isWhitelisted ? '#4CAF50' : '#FF5722'};
+`;
+
 export default function WhitelistCheck({ capicoContract, account }) {
   const [isWhitelisted, setIsWhitelisted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const checkWhitelist = async () => {
-    if (!capicoContract || !account) return;
-
-    try {
-      const whitelistStatus = await capicoContract.whitelist(account);
-      setIsWhitelisted(whitelistStatus);
-      setError(null);
-    } catch (error) {
-      console.error('Error checking whitelist status:', error);
-      setError('Failed to check whitelist status. Please try again later.');
-    }
-  };
-
   useEffect(() => {
-    checkWhitelist();
+    const checkWhitelistStatus = async () => {
+      if (!capicoContract || !account) return;
+
+      try {
+        const status = await capicoContract.whitelist(account);
+        console.log('Whitelist status:', status); // Add this line for debugging
+        setIsWhitelisted(status);
+        setError(null);
+      } catch (error) {
+        console.error('Error checking whitelist status:', error);
+        setError('Failed to check whitelist status. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkWhitelistStatus();
   }, [capicoContract, account]);
 
-  const handleWhitelistUpdate = () => {
-    checkWhitelist();
-  };
+  if (isLoading) {
+    return <WhitelistWrapper>Checking whitelist status...</WhitelistWrapper>;
+  }
 
   if (error) {
     return <WhitelistWrapper>{error}</WhitelistWrapper>;
@@ -41,17 +50,9 @@ export default function WhitelistCheck({ capicoContract, account }) {
   return (
     <WhitelistWrapper>
       <h3>Whitelist Status</h3>
-      <p>
+      <StatusText $isWhitelisted={isWhitelisted}>
         Your address ({account}) is {isWhitelisted ? 'whitelisted' : 'not whitelisted'} for this ICO.
-      </p>
-      {!isWhitelisted && (
-        <SelfWhitelist
-          capicoContract={capicoContract}
-          account={account}
-          onWhitelistUpdate={handleWhitelistUpdate}
-        />
-      )}
+      </StatusText>
     </WhitelistWrapper>
   );
 }
-

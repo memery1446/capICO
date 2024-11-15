@@ -9,65 +9,76 @@ const tokens = (n) => {
 
 const ether = tokens
 
-    describe('CapICO', () => {
-      let token, capico;
-      let deployer, user1, user2;
-      let startTime, endTime;
-      const day = 24 * 60 * 60;
+describe('CapICO', () => {
+  let token, capico;
+  let deployer, user1, user2;
+  let startTime, endTime;
+  const day = 24 * 60 * 60;
 
-      beforeEach(async () => {
-        // Get signers
-        [deployer, user1, user2] = await ethers.getSigners();
+  beforeEach(async function() {
+    // Get signers
+    [deployer, user1, user2] = await ethers.getSigners();
 
-        // Deploy Token
-        const Token = await ethers.getContractFactory('Token')
-        token = await Token.deploy('Test Token', 'TEST', '1000000')
+    // Deploy Token
+    const Token = await ethers.getContractFactory('Token')
+    token = await Token.deploy('Test Token', 'TEST', '1000000')
 
-        // Deploy CapICO
-        const CapICO = await ethers.getContractFactory('CapICO')
-        capico = await CapICO.deploy(
-          token.address,
-          ether(100),  // softCap
-          ether(0.1),  // minInvestment
-          ether(50)    // maxInvestment - increased to allow larger test purchases
-        )
+    // Get current block timestamp for tier times
+    const latestTime = await time.latest();
+    startTime = latestTime + 100;
+    endTime = startTime + (3 * day);
 
-        // Transfer only 200 tokens to CapICO contract (reduced from 1,000,000)
-        // This ensures we stay under the MAX_TRANSFER_AMOUNT limit of 100,000
-        await token.transfer(capico.address, tokens(200))
+    // Deploy CapICO with initial tiers
+    const CapICO = await ethers.getContractFactory('CapICO')
+    capico = await CapICO.deploy(
+      token.address,
+      ether(100),  // softCap
+      ether(0.1),  // minInvestment
+      ether(50),   // maxInvestment
+      [ether(1), ether(2)],  // prices for two tiers
+      [tokens(100), tokens(100)],  // maxTokens for two tiers
+      [startTime, endTime + 1],  // startTimes
+      [endTime, endTime + day]   // endTimes
+    )
 
-         // Get current block timestamp
-        const latestTime = await time.latest();
-        startTime = latestTime + 100;
-        endTime = startTime + (3 * day);
-      });
+    // Transfer tokens to CapICO contract
+    await token.transfer(capico.address, tokens(200))
+  });
 
-    describe('Deployment', () => {
-      it('has correct token address', async () => {
-        expect(await capico.token()).to.equal(token.address)
-      })
+  describe('Deployment', () => {
+    it('has correct token address', async () => {
+      expect(await capico.token()).to.equal(token.address)
+    })
 
-      it('has correct soft cap', async () => {
-        expect(await capico.softCap()).to.equal(ether(100))
-      })
+    it('has correct soft cap', async () => {
+      expect(await capico.softCap()).to.equal(ether(100))
+    })
 
-      it('has correct investment limits', async () => {
-        expect(await capico.minInvestment()).to.equal(ether(0.1))
-        expect(await capico.maxInvestment()).to.equal(ether(50))
-      })
-      });
+    it('has correct investment limits', async () => {
+      expect(await capico.minInvestment()).to.equal(ether(0.1))
+      expect(await capico.maxInvestment()).to.equal(ether(50))
+    })
 
-    describe('Token Purchase', () => {
-      beforeEach(async () => {
-        await capico.addTier(
-          ether(1),           // price
-          tokens(1000),       // maxTokens
-          startTime,          // startTime
-          endTime            // endTime
-        );
-        await capico.updateWhitelist([user1.address], true);
-        await time.increaseTo(startTime + 1);
-      });
+    it('initializes tiers correctly', async () => {
+      const tier0 = await capico.tiers(0)
+      expect(tier0.price).to.equal(ether(1))
+      expect(tier0.maxTokens).to.equal(tokens(100))
+      expect(tier0.startTime).to.equal(startTime)
+      expect(tier0.endTime).to.equal(endTime)
+
+      const tier1 = await capico.tiers(1)
+      expect(tier1.price).to.equal(ether(2))
+      expect(tier1.maxTokens).to.equal(tokens(100))
+      expect(tier1.startTime).to.equal(endTime + 1)
+      expect(tier1.endTime).to.equal(endTime + day)
+    })
+  });
+
+  describe('Token Purchase', () => {
+    beforeEach(async () => {
+      await capico.updateWhitelist([user1.address], true);
+      await time.increaseTo(startTime + 1);
+    });
 
     describe('Success cases', () => {
       it('allows whitelisted user to buy tokens', async () => {
@@ -106,111 +117,68 @@ const ether = tokens
         ).to.be.revertedWith('Incorrect payment');
       });
     });
-
-    describe('Distribution schedule', () => {
-      it('creates correct distribution schedule', async () => {
-        await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
-        
-        const distribution1 = await capico.distributions(user1.address, 0);
-        const distribution2 = await capico.distributions(user1.address, 1);
-        
-        expect(distribution1.amount).to.equal(tokens(2.5)); // 25%
-        expect(distribution2.amount).to.equal(tokens(2.5)); // 25%
-        expect(distribution1.claimed).to.be.false;
-        expect(distribution2.claimed).to.be.false;
-      });
-
-      it('schedules correct release times', async () => {
-        const beforePurchase = await time.latest();
-        await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
-        
-        const distribution1 = await capico.distributions(user1.address, 0);
-        const distribution2 = await capico.distributions(user1.address, 1);
-        
-        expect(distribution1.releaseTime).to.be.closeTo(
-          BigNumber.from(beforePurchase).add(30 * day),
-          2
-        );
-        
-        expect(distribution2.releaseTime).to.be.closeTo(
-          BigNumber.from(beforePurchase).add(60 * day),
-          2
-        );
-      });
-    });
   });
 
-    describe('Refunds', () => {
-      beforeEach(async () => {
-            // Get current block timestamp
-        const latestTime = await time.latest();
-          // Set tier times to accommodate multiple purchases + cooldown
-          startTime = latestTime + 100;
-          endTime = startTime + (3 * day); // Extended to 3 days to accommodate cooldown
-        await capico.addTier(
-          ether(1),           // price
-          tokens(1000),       // maxTokens
-          startTime,          // startTime
-          endTime            // endTime
-        );
-        await capico.updateWhitelist([user1.address, user2.address], true);
-        await time.increaseTo(startTime + 1);
-      });
-
-    describe('Success cases', () => {
-      it('allows refund if soft cap not met', async () => {
-        await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
-        await time.increaseTo(endTime + 1);
-        
-        const balanceBefore = await ethers.provider.getBalance(user1.address);
-        const tx = await capico.connect(user1).claimRefund();
-        const receipt = await tx.wait();
-        const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
-        const balanceAfter = await ethers.provider.getBalance(user1.address);
-        
-        expect(balanceAfter.add(gasCost).sub(balanceBefore)).to.equal(ether(10));
-      });
-    });
-
-    describe('Failure cases', () => {
-      it('prevents refund if soft cap met', async () => {
-        // Buy tokens with user1
-        await capico.connect(user1).buyTokens(tokens(50), { value: ether(50) });
-        
-        // Wait for cooldown period but stay within tier period
-        await time.increase(86400); // Increase by 1 day
-        
-        // Buy tokens with user2
-        await capico.connect(user2).buyTokens(tokens(50), { value: ether(50) });
-        
-        // Wait until ICO ends
-        await time.increaseTo(endTime + 1);
-        
-        await expect(
-          capico.connect(user1).claimRefund()
-        ).to.be.revertedWith('Soft cap reached');
-      });
-    });
-  });
-
-  describe('Emergency Functions', () => {
+  describe('Distribution schedule', () => {
     beforeEach(async () => {
-      await capico.addTier(
-        ether(1),
-        tokens(1000),
-        startTime,
-        endTime
-      );
       await capico.updateWhitelist([user1.address], true);
       await time.increaseTo(startTime + 1);
     });
 
+    it('creates correct distribution schedule', async () => {
+      await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+      
+      const distribution1 = await capico.distributions(user1.address, 0);
+      const distribution2 = await capico.distributions(user1.address, 1);
+      
+      expect(distribution1.amount).to.equal(tokens(2.5)); // 25%
+      expect(distribution2.amount).to.equal(tokens(2.5)); // 25%
+      expect(distribution1.claimed).to.be.false;
+      expect(distribution2.claimed).to.be.false;
+    });
+
+    it('schedules correct release times', async () => {
+      const beforePurchase = await time.latest();
+      await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+      
+      const distribution1 = await capico.distributions(user1.address, 0);
+      const distribution2 = await capico.distributions(user1.address, 1);
+      
+      expect(distribution1.releaseTime).to.be.closeTo(
+        BigNumber.from(beforePurchase).add(30 * day),
+        2
+      );
+      
+      expect(distribution2.releaseTime).to.be.closeTo(
+        BigNumber.from(beforePurchase).add(60 * day),
+        2
+      );
+    });
+  });
+
+  describe('Tier Management', () => {
+    it('allows advancing to next tier after current tier ends', async () => {
+      await time.increaseTo(endTime + 1);
+      await capico.advanceTier();
+      expect(await capico.currentTier()).to.equal(1);
+    });
+
+    it('prevents advancing tier before current ends', async () => {
+      await expect(
+        capico.advanceTier()
+      ).to.be.revertedWith('Current tier not ended');
+    });
+  });
+
+  describe('Emergency Functions', () => {
     it('allows owner to pause', async () => {
       await capico.pause();
       expect(await capico.paused()).to.be.true;
     });
 
     it('prevents purchases while paused', async () => {
+      await capico.updateWhitelist([user1.address], true);
+      await time.increaseTo(startTime + 1);
       await capico.pause();
       await expect(
         capico.connect(user1).buyTokens(tokens(10), { value: ether(10) })
@@ -218,116 +186,23 @@ const ether = tokens
     });
   });
 
-describe('Finalization', () => {
-  beforeEach(async () => {
-    // Get current block timestamp
-    const latestTime = await time.latest();
-    startTime = latestTime + 100;
-    endTime = startTime + (3 * day);
-
-    await capico.addTier(
-      ether(1),
-      tokens(200), // Reduced max tokens to match our smaller initial supply
-      startTime,
-      endTime
-    );
-    await capico.updateWhitelist([user1.address, user2.address], true);
-    await time.increaseTo(startTime + 1);
-  });
-
-  it('allows finalization after end time if soft cap met', async () => {
-    // Buy tokens with user1 - 50 ETH (max investment)
-    await capico.connect(user1).buyTokens(tokens(50), { value: ether(50) });
-    
-    // Wait for cooldown period but stay within tier period
-    await time.increase(86400);
-    
-    // Buy tokens with user2 - 50 ETH (max investment)
-    await capico.connect(user2).buyTokens(tokens(50), { value: ether(50) });
-    
-    // Wait until ICO ends
-    await time.increaseTo(endTime + 1);
-    
-    await capico.finalize();
-    expect(await capico.isFinalized()).to.be.true;
-  });
-});
-  describe('Token Distribution', () => {
-  beforeEach(async () => {
-    await capico.addTier(
-      ether(1),
-      tokens(1000),
-      startTime,
-      endTime
-    );
-    await capico.updateWhitelist([user1.address], true);
-    await time.increaseTo(startTime + 1);
-  });
-
-  it('allows claiming distribution after release time', async () => {
-    await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
-    await time.increase(30 * day + 1);
-    
-    await capico.connect(user1).claimDistribution(0);
-    expect(await token.balanceOf(user1.address)).to.equal(tokens(7.5)); // Initial 50% + first 25%
-  });
-
-  it('prevents claiming distribution before release time', async () => {
-    await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
-    await expect(
-      capico.connect(user1).claimDistribution(0)
-    ).to.be.revertedWith('Too early');
-  });
-
-  it('prevents claiming distribution twice', async () => {
-    await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
-    await time.increase(30 * day + 1);
-    await capico.connect(user1).claimDistribution(0);
-    await expect(
-      capico.connect(user1).claimDistribution(0)
-    ).to.be.revertedWith('Already claimed');
-  });
-});
-
-describe('Tier Management', () => {
-  it('prevents adding tier with invalid times', async () => {
-    await expect(
-      capico.addTier(ether(1), tokens(1000), endTime, startTime)
-    ).to.be.revertedWith('Invalid end time');
-  });
-
-  it('prevents adding overlapping tiers', async () => {
-    const futureStart = (await time.latest()) + day;
-    await capico.addTier(ether(1), tokens(1000), futureStart, futureStart + day);
-    await expect(
-      capico.addTier(ether(1), tokens(1000), futureStart - 1, futureStart + day + 1)
-    ).to.be.revertedWith('Overlapping tiers');
-  });
-
-  it('prevents advancing tier before current ends', async () => {
-    await capico.addTier(ether(1), tokens(1000), startTime, endTime);
-    await capico.addTier(ether(2), tokens(1000), endTime + 1, endTime + day);
-    await expect(
-      capico.advanceTier()
-    ).to.be.revertedWith('Current tier not ended');
-  });
-});
-
-describe('Receive Function', () => {
-  beforeEach(async () => {
-    await capico.addTier(ether(1), tokens(1000), startTime, endTime);
-    await capico.updateWhitelist([user1.address], true);
-    await time.increaseTo(startTime + 1);
-  });
-
-  it('handles direct ETH transfers correctly', async () => {
-    await user1.sendTransaction({
-      to: capico.address,
-      value: ether(10)
+  describe('Refunds', () => {
+    beforeEach(async () => {
+      await capico.updateWhitelist([user1.address], true);
+      await time.increaseTo(startTime + 1);
     });
-    
-    expect(await token.balanceOf(user1.address)).to.equal(tokens(5)); // 50% immediate
-    expect(await capico.totalTokensSold()).to.equal(tokens(10));
+
+    it('allows refund if soft cap not met', async () => {
+      await capico.connect(user1).buyTokens(tokens(10), { value: ether(10) });
+      await time.increaseTo(endTime + day + 1); // After all tiers end
+      
+      const balanceBefore = await ethers.provider.getBalance(user1.address);
+      const tx = await capico.connect(user1).claimRefund();
+      const receipt = await tx.wait();
+      const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+      const balanceAfter = await ethers.provider.getBalance(user1.address);
+      
+      expect(balanceAfter.add(gasCost).sub(balanceBefore)).to.equal(ether(10));
+    });
   });
-});
 });

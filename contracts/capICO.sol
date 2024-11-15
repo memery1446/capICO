@@ -48,16 +48,48 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         Token _token,
         uint256 _softCap,
         uint256 _minInvestment,
-        uint256 _maxInvestment
+        uint256 _maxInvestment,
+        uint256[] memory _prices,
+        uint256[] memory _maxTokens,
+        uint256[] memory _startTimes,
+        uint256[] memory _endTimes
     ) {
         require(address(_token) != address(0), "Invalid token");
         require(_softCap > 0, "Invalid soft cap");
         require(_minInvestment > 0 && _minInvestment <= _maxInvestment, "Invalid investment limits");
+        require(_prices.length == _maxTokens.length && 
+                _maxTokens.length == _startTimes.length && 
+                _startTimes.length == _endTimes.length, 
+                "Invalid tier arrays");
         
         token = _token;
         softCap = _softCap;
         minInvestment = _minInvestment;
         maxInvestment = _maxInvestment;
+
+        // Initialize tiers during deployment
+        for(uint i = 0; i < _prices.length; i++) {
+            require(_startTimes[i] > block.timestamp, "Invalid start time");
+            require(_endTimes[i] > _startTimes[i], "Invalid end time");
+            require(_prices[i] > 0, "Invalid price");
+            require(_maxTokens[i] > 0, "Invalid max tokens");
+            
+            if (i > 0) {
+                require(_startTimes[i] > _endTimes[i-1], "Overlapping tiers");
+            }
+            
+            tiers.push(Tier({
+                price: _prices[i],
+                maxTokens: _maxTokens[i],
+                tokensSold: 0,
+                startTime: _startTimes[i],
+                endTime: _endTimes[i]
+            }));
+        }
+
+        // Automatically whitelist the deployer
+        whitelist[msg.sender] = true;
+        emit WhitelistUpdated(msg.sender, true);
     }
     
     function addTier(
@@ -185,9 +217,7 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         
         uint256 remainingTokens = token.balanceOf(address(this));
         if (remainingTokens > 0) {
-            uint256 contractBalance = token.balanceOf(address(this));
-            uint256 transferAmount = remainingTokens > contractBalance ? contractBalance : remainingTokens;
-            require(token.transfer(owner(), transferAmount), "Token transfer failed");
+            require(token.transfer(owner(), remainingTokens), "Token transfer failed");
         }
         
         uint256 value = address(this).balance;
@@ -203,3 +233,4 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         buyTokens(amount);
     }
 }
+

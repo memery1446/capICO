@@ -3,10 +3,16 @@ import blockchainReducer from './blockchainSlice';
 import icoReducer from './icoSlice';
 import accountReducer from './accountSlice';
 
-export const store = configureStore({
+const store = configureStore({
   reducer: {
     blockchain: blockchainReducer,
     ico: icoReducer,
-    account: accountReducer,
+    account: accountReducer
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+    })
 });
+
+export default store;
