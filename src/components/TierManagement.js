@@ -2,208 +2,175 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import styled from 'styled-components';
 
-const TierManagementWrapper = styled.div`
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  padding: 20px;
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-bottom: 20px;
 `;
 
 const Input = styled.input`
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
 `;
 
 const Button = styled.button`
   background-color: #4CAF50;
-  border: none;
   color: white;
-  padding: 10px 20px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 14px;
-  margin: 4px 2px;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
   &:disabled {
     background-color: #cccccc;
-    cursor: not-allowed;
   }
 `;
 
-const TierList = styled.ul`
-  list-style-type: none;
-  padding: 0;
+const ErrorMessage = styled.p`
+  color: #ff0000;
 `;
 
-const TierItem = styled.li`
-  background-color: ${props => props.$isActive ? '#4a4a4a' : '#3a3a3a'};
-  border-radius: 4px;
+const TierInfo = styled.div`
+  background-color: #f0f0f0;
   padding: 10px;
   margin-bottom: 10px;
+  border-radius: 4px;
 `;
 
-const FormGroup = styled.div`
-  margin-bottom: 15px;
-`;
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: 5px;
-`;
-
-const ErrorMessage = styled.p`
-  color: #ff6b6b;
-  font-weight: bold;
-`;
-
-export default function TierManagement({ onTierUpdate }) {
-  const [tiers, setTiers] = useState([]);
+export default function TierManagement({ capicoContract }) {
   const [price, setPrice] = useState('');
   const [maxTokens, setMaxTokens] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [editingIndex, setEditingIndex] = useState(-1);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [tiers, setTiers] = useState([]);
 
   useEffect(() => {
-    const storedTiers = localStorage.getItem('icotiers');
-    if (storedTiers) {
-      setTiers(JSON.parse(storedTiers));
-    }
-  }, []);
+    fetchTiers();
+  }, [capicoContract]);
 
-  useEffect(() => {
-    localStorage.setItem('icotiers', JSON.stringify(tiers));
-    if (onTierUpdate) {
-      onTierUpdate(tiers);
-    }
-  }, [tiers, onTierUpdate]);
-
-  const validateTier = (newTier, index = -1) => {
-    if (newTier.startTime >= newTier.endTime) {
-      setError('End time must be after start time');
-      return false;
-    }
-
-    for (let i = 0; i < tiers.length; i++) {
-      if (i === index) continue;
-      const tier = tiers[i];
-      if ((newTier.startTime < tier.endTime && newTier.endTime > tier.startTime) ||
-          (tier.startTime < newTier.endTime && tier.endTime > newTier.startTime)) {
-        setError('Tiers cannot overlap in time');
-        return false;
+  const fetchTiers = async () => {
+    if (!capicoContract) return;
+    try {
+      const tierCount = await capicoContract.tiers.length;
+      const fetchedTiers = [];
+      for (let i = 0; i < tierCount; i++) {
+        const tier = await capicoContract.tiers(i);
+        fetchedTiers.push({
+          price: ethers.utils.formatEther(tier.price),
+          maxTokens: ethers.utils.formatEther(tier.maxTokens),
+          tokensSold: ethers.utils.formatEther(tier.tokensSold),
+          startTime: new Date(tier.startTime.toNumber() * 1000).toISOString().slice(0, 16),
+          endTime: new Date(tier.endTime.toNumber() * 1000).toISOString().slice(0, 16)
+        });
       }
+      setTiers(fetchedTiers);
+    } catch (error) {
+      console.error("Error fetching tiers:", error);
+      setError("Failed to fetch tier information.");
     }
+  };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setError('');
-    return true;
-  };
+    setIsLoading(true);
 
-  const addOrUpdateTier = () => {
-    const newTier = {
-      price: ethers.utils.parseEther(price),
-      maxTokens: ethers.utils.parseUnits(maxTokens, 18),
-      startTime: new Date(startTime).getTime() / 1000,
-      endTime: new Date(endTime).getTime() / 1000,
-      tokensSold: editingIndex >= 0 ? tiers[editingIndex].tokensSold : 0
-    };
+    try {
+      const priceInWei = ethers.utils.parseEther(price);
+      const maxTokensInWei = ethers.utils.parseEther(maxTokens);
+      const startTimeUnix = Math.floor(new Date(startTime).getTime() / 1000);
+      const endTimeUnix = Math.floor(new Date(endTime).getTime() / 1000);
 
-    if (!validateTier(newTier, editingIndex)) return;
+      if (startTimeUnix <= Math.floor(Date.now() / 1000)) {
+        throw new Error("Start time must be in the future");
+      }
 
-    if (editingIndex >= 0) {
-      const updatedTiers = [...tiers];
-      updatedTiers[editingIndex] = newTier;
-      setTiers(updatedTiers);
-    } else {
-      setTiers([...tiers, newTier].sort((a, b) => a.startTime - b.startTime));
+      if (endTimeUnix <= startTimeUnix) {
+        throw new Error("End time must be after start time");
+      }
+
+      // Check for overlapping tiers
+      for (const tier of tiers) {
+        const tierStartTime = new Date(tier.startTime).getTime() / 1000;
+        const tierEndTime = new Date(tier.endTime).getTime() / 1000;
+        if (
+          (startTimeUnix >= tierStartTime && startTimeUnix < tierEndTime) ||
+          (endTimeUnix > tierStartTime && endTimeUnix <= tierEndTime) ||
+          (startTimeUnix <= tierStartTime && endTimeUnix >= tierEndTime)
+        ) {
+          throw new Error("New tier overlaps with an existing tier");
+        }
+      }
+
+      const tx = await capicoContract.addTier(priceInWei, maxTokensInWei, startTimeUnix, endTimeUnix);
+      await tx.wait();
+      alert('Tier added successfully!');
+      setPrice('');
+      setMaxTokens('');
+      setStartTime('');
+      setEndTime('');
+      fetchTiers();
+    } catch (error) {
+      console.error("Error adding tier:", error);
+      setError(`Failed to add tier: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
-
-    setPrice('');
-    setMaxTokens('');
-    setStartTime('');
-    setEndTime('');
-    setEditingIndex(-1);
-  };
-
-  const editTier = (index) => {
-    const tier = tiers[index];
-    setPrice(ethers.utils.formatEther(tier.price));
-    setMaxTokens(ethers.utils.formatUnits(tier.maxTokens, 18));
-    setStartTime(new Date(tier.startTime * 1000).toISOString().slice(0, 16));
-    setEndTime(new Date(tier.endTime * 1000).toISOString().slice(0, 16));
-    setEditingIndex(index);
-  };
-
-  const deleteTier = (index) => {
-    setTiers(tiers.filter((_, i) => i !== index));
-  };
-
-  const isActiveTier = (tier) => {
-    const now = Date.now() / 1000;
-    return now >= tier.startTime && now < tier.endTime;
   };
 
   return (
-    <TierManagementWrapper>
-      <h3>Tier Management</h3>
-      <FormGroup>
-        <Label htmlFor="price">Price (in ETH)</Label>
+    <div>
+      <h3>Add New Tier</h3>
+      <Form onSubmit={handleSubmit}>
         <Input
-          id="price"
           type="number"
           step="0.000000000000000001"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
+          placeholder="Price per token (ETH)"
+          required
         />
-      </FormGroup>
-      <FormGroup>
-        <Label htmlFor="maxTokens">Max Tokens</Label>
         <Input
-          id="maxTokens"
           type="number"
+          step="1"
           value={maxTokens}
           onChange={(e) => setMaxTokens(e.target.value)}
+          placeholder="Max tokens for this tier"
+          required
         />
-      </FormGroup>
-      <FormGroup>
-        <Label htmlFor="startTime">Tier Start Time</Label>
         <Input
-          id="startTime"
           type="datetime-local"
           value={startTime}
           onChange={(e) => setStartTime(e.target.value)}
+          required
         />
-      </FormGroup>
-      <FormGroup>
-        <Label htmlFor="endTime">Tier End Time</Label>
         <Input
-          id="endTime"
           type="datetime-local"
           value={endTime}
           onChange={(e) => setEndTime(e.target.value)}
+          required
         />
-      </FormGroup>
-      <Button onClick={addOrUpdateTier} disabled={!price || !maxTokens || !startTime || !endTime}>
-        {editingIndex >= 0 ? 'Update Tier' : 'Add Tier'}
-      </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Adding...' : 'Add Tier'}
+        </Button>
+      </Form>
       {error && <ErrorMessage>{error}</ErrorMessage>}
-      <TierList>
-        {tiers.map((tier, index) => (
-          <TierItem key={index} $isActive={isActiveTier(tier)}>
-            <p>Price: {ethers.utils.formatEther(tier.price)} ETH</p>
-            <p>Max Tokens: {ethers.utils.formatUnits(tier.maxTokens, 18)}</p>
-            <p>Start: {new Date(tier.startTime * 1000).toLocaleString()}</p>
-            <p>End: {new Date(tier.endTime * 1000).toLocaleString()}</p>
-            <p>Tokens Sold: {ethers.utils.formatUnits(tier.tokensSold, 18)}</p>
-            <p>{isActiveTier(tier) ? 'Active' : 'Inactive'}</p>
-            <Button onClick={() => editTier(index)}>Edit</Button>
-            <Button onClick={() => deleteTier(index)}>Delete</Button>
-          </TierItem>
-        ))}
-      </TierList>
-    </TierManagementWrapper>
+
+      <h3>Existing Tiers</h3>
+      {tiers.map((tier, index) => (
+        <TierInfo key={index}>
+          <p>Tier {index + 1}</p>
+          <p>Price: {tier.price} ETH</p>
+          <p>Max Tokens: {tier.maxTokens}</p>
+          <p>Tokens Sold: {tier.tokensSold}</p>
+          <p>Start Time: {tier.startTime}</p>
+          <p>End Time: {tier.endTime}</p>
+        </TierInfo>
+      ))}
+    </div>
   );
 }
 

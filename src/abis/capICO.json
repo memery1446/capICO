@@ -20,6 +20,26 @@
           "internalType": "uint256",
           "name": "_maxInvestment",
           "type": "uint256"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "_prices",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "_maxTokens",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "_startTimes",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "_endTimes",
+          "type": "uint256[]"
         }
       ],
       "stateMutability": "nonpayable",
@@ -609,3 +629,5 @@
       "type": "receive"
     }
   ]
+
+

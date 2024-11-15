@@ -7,6 +7,8 @@ import WhitelistManagement from './components/WhitelistManagement';
 import PurchaseForm from './components/PurchaseForm';
 import DistributionClaim from './components/DistributionClaim';
 import WalletConnection from './components/WalletConnection';
+import ICOInfo from './components/ICOInfo';
+import RefundClaim from './components/RefundClaim';
 import { CAPICO_ADDRESS, CAPICO_ABI } from './config';
 
 const AppWrapper = styled.div`
@@ -31,8 +33,21 @@ const Section = styled.section`
   margin-bottom: 20px;
 `;
 
-const AdminSection = styled(Section)`
-  border: 1px solid #4CAF50;
+const Button = styled.button`
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 14px;
+  margin: 4px 2px;
+  cursor: pointer;
+  &:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
 `;
 
 function App() {
@@ -40,7 +55,8 @@ function App() {
   const [account, setAccount] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
   const [error, setError] = useState(null);
-  const [tiers, setTiers] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [icoFinalized, setIcoFinalized] = useState(false);
 
   useEffect(() => {
     const initContract = async () => {
@@ -51,8 +67,11 @@ function App() {
           const contract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, signer);
           setCapicoContract(contract);
 
-          const owner = await contract.owner();
-          setIsOwner(owner.toLowerCase() === account.toLowerCase());
+          const ownerAddress = await contract.owner();
+          setIsOwner(ownerAddress.toLowerCase() === account.toLowerCase());
+
+          const finalized = await contract.isFinalized();
+          setIcoFinalized(finalized);
 
           setError(null);
         } catch (error) {
@@ -69,15 +88,37 @@ function App() {
     setAccount(connectedAccount);
   };
 
-  const handleTierUpdate = (updatedTiers) => {
-    setTiers(updatedTiers);
+  const handleAdvanceTier = async () => {
+    if (!capicoContract) return;
+
+    try {
+      setIsLoading(true);
+      const tx = await capicoContract.advanceTier();
+      await tx.wait();
+      setIsLoading(false);
+      alert('Tier advanced successfully!');
+    } catch (error) {
+      console.error("Error advancing tier:", error);
+      setError(`Failed to advance tier: ${error.message}`);
+      setIsLoading(false);
+    }
   };
 
-  const handlePurchase = (updatedTier) => {
-    const updatedTiers = tiers.map(tier => 
-      tier.startTime === updatedTier.startTime ? updatedTier : tier
-    );
-    setTiers(updatedTiers);
+  const handleFinalizeICO = async () => {
+    if (!capicoContract) return;
+
+    try {
+      setIsLoading(true);
+      const tx = await capicoContract.finalize();
+      await tx.wait();
+      setIcoFinalized(true);
+      setIsLoading(false);
+      alert('ICO finalized successfully!');
+    } catch (error) {
+      console.error("Error finalizing ICO:", error);
+      setError(`Failed to finalize ICO: ${error.message}`);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -91,31 +132,50 @@ function App() {
         {account && capicoContract ? (
           <>
             <Section>
-              <WhitelistCheck capicoContract={capicoContract} account={account} />
+              <ICOInfo capicoContract={capicoContract} />
             </Section>
             <Section>
-              <h2>Purchase Tokens</h2>
-              <PurchaseForm 
-                capicoContract={capicoContract} 
-                account={account} 
-                tiers={tiers}
-                onPurchase={handlePurchase}
-              />
+              <WhitelistCheck capicoContract={capicoContract} account={account} />
             </Section>
+            {!icoFinalized && (
+              <Section>
+                <h2>Purchase Tokens</h2>
+                <PurchaseForm 
+                  capicoContract={capicoContract} 
+                  account={account}
+                />
+              </Section>
+            )}
             <Section>
               <h2>Claim Your Tokens</h2>
               <DistributionClaim capicoContract={capicoContract} account={account} />
             </Section>
+            <Section>
+              <h2>Claim Refund</h2>
+              <RefundClaim capicoContract={capicoContract} account={account} />
+            </Section>
             {isOwner && (
               <>
-                <AdminSection>
+                <Section>
+                  <h2>Admin: Advance Tier</h2>
+                  <Button onClick={handleAdvanceTier} disabled={isLoading || icoFinalized}>
+                    {isLoading ? 'Processing...' : 'Advance to Next Tier'}
+                  </Button>
+                </Section>
+                <Section>
+                  <h2>Admin: Finalize ICO</h2>
+                  <Button onClick={handleFinalizeICO} disabled={isLoading || icoFinalized}>
+                    {isLoading ? 'Processing...' : 'Finalize ICO'}
+                  </Button>
+                </Section>
+                <Section>
                   <h2>Admin: Tier Management</h2>
-                  <TierManagement onTierUpdate={handleTierUpdate} />
-                </AdminSection>
-                <AdminSection>
+                  <TierManagement capicoContract={capicoContract} />
+                </Section>
+                <Section>
                   <h2>Admin: Whitelist Management</h2>
                   <WhitelistManagement capicoContract={capicoContract} account={account} />
-                </AdminSection>
+                </Section>
               </>
             )}
           </>
@@ -128,3 +188,4 @@ function App() {
 }
 
 export default App;
+
