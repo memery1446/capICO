@@ -9,124 +9,74 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract CapICO is ReentrancyGuard, Pausable, Ownable {
     Token public immutable token;
     
-    struct Tier {
-        uint256 price;          // Price per token in wei
-        uint256 maxTokens;      // Maximum tokens available in this tier
-        uint256 tokensSold;     // Tokens sold in this tier
-        uint256 startTime;      // When this tier starts
-        uint256 endTime;        // When this tier ends
-    }
-    
     struct Distribution {
         uint256 amount;         // Amount to distribute
         uint256 releaseTime;    // When tokens can be claimed
         bool claimed;           // Whether tokens have been claimed
     }
     
-    Tier[] public tiers;
-    uint256 public currentTier;
-    
+    uint256 public startTime;
+    uint256 public endTime;
+    uint256 public tokenPrice;  // Price per token in wei
     uint256 public softCap;
+    uint256 public hardCap;     // New feature: Maximum raise amount
     uint256 public minInvestment;
     uint256 public maxInvestment;
     uint256 public totalTokensSold;
+    uint256 public totalRaised;
     bool public isFinalized;
     
     mapping(address => bool) public whitelist;
     mapping(address => uint256) public investments;
     mapping(address => Distribution[]) public distributions;
     
-    event Buy(address indexed buyer, uint256 amount, uint256 tier);
-    event TierAdvanced(uint256 newTier);
+    event Buy(address indexed buyer, uint256 amount);
     event WhitelistUpdated(address indexed user, bool status);
     event TokensClaimed(address indexed user, uint256 amount);
     event Refunded(address indexed user, uint256 amount);
     event DistributionScheduled(address indexed user, uint256 amount, uint256 releaseTime);
     event Finalize(uint256 tokensSold, uint256 ethRaised);
+    event ICOTimeUpdated(uint256 newStartTime, uint256 newEndTime);
     
     constructor(
         Token _token,
+        uint256 _tokenPrice,
         uint256 _softCap,
+        uint256 _hardCap,
         uint256 _minInvestment,
         uint256 _maxInvestment,
-        uint256[] memory _prices,
-        uint256[] memory _maxTokens,
-        uint256[] memory _startTimes,
-        uint256[] memory _endTimes
+        uint256 _startTime,
+        uint256 _endTime
     ) {
         require(address(_token) != address(0), "Invalid token");
-        require(_softCap > 0, "Invalid soft cap");
+        require(_tokenPrice > 0, "Invalid token price");
+        require(_softCap > 0 && _softCap < _hardCap, "Invalid caps");
         require(_minInvestment > 0 && _minInvestment <= _maxInvestment, "Invalid investment limits");
-        require(_prices.length == _maxTokens.length && 
-                _maxTokens.length == _startTimes.length && 
-                _startTimes.length == _endTimes.length, 
-                "Invalid tier arrays");
+        require(_startTime > block.timestamp, "Invalid start time");
+        require(_endTime > _startTime, "Invalid end time");
         
         token = _token;
+        tokenPrice = _tokenPrice;
         softCap = _softCap;
+        hardCap = _hardCap;
         minInvestment = _minInvestment;
         maxInvestment = _maxInvestment;
+        startTime = _startTime;
+        endTime = _endTime;
 
-        // Initialize tiers during deployment
-        for(uint i = 0; i < _prices.length; i++) {
-            require(_startTimes[i] > block.timestamp, "Invalid start time");
-            require(_endTimes[i] > _startTimes[i], "Invalid end time");
-            require(_prices[i] > 0, "Invalid price");
-            require(_maxTokens[i] > 0, "Invalid max tokens");
-            
-            if (i > 0) {
-                require(_startTimes[i] > _endTimes[i-1], "Overlapping tiers");
-            }
-            
-            tiers.push(Tier({
-                price: _prices[i],
-                maxTokens: _maxTokens[i],
-                tokensSold: 0,
-                startTime: _startTimes[i],
-                endTime: _endTimes[i]
-            }));
-        }
-
-        // Automatically whitelist the deployer
         whitelist[msg.sender] = true;
         emit WhitelistUpdated(msg.sender, true);
     }
     
-    function addTier(
-        uint256 _price,
-        uint256 _maxTokens,
-        uint256 _startTime,
-        uint256 _endTime
-    ) external onlyOwner {
+    // New feature: Allow owner to update ICO times if needed
+    function updateICOTime(uint256 _startTime, uint256 _endTime) external onlyOwner {
+        require(block.timestamp < startTime, "ICO already started");
         require(_startTime > block.timestamp, "Invalid start time");
         require(_endTime > _startTime, "Invalid end time");
-        require(_price > 0, "Invalid price");
-        require(_maxTokens > 0, "Invalid max tokens");
         
-        if (tiers.length > 0) {
-            require(_startTime > tiers[tiers.length - 1].endTime, "Overlapping tiers");
-        }
-        
-        tiers.push(Tier({
-            price: _price,
-            maxTokens: _maxTokens,
-            tokensSold: 0,
-            startTime: _startTime,
-            endTime: _endTime
-        }));
-    }
-    
-    function getCurrentTier() public view returns (Tier memory) {
-        require(tiers.length > 0, "No tiers configured");
-        require(currentTier < tiers.length, "All tiers completed");
-        return tiers[currentTier];
-    }
-    
-    function advanceTier() external onlyOwner {
-        require(currentTier < tiers.length - 1, "No more tiers");
-        require(block.timestamp >= tiers[currentTier].endTime, "Current tier not ended");
-        currentTier++;
-        emit TierAdvanced(currentTier);
+        startTime = _startTime;
+        endTime = _endTime;
+        emit ICOTimeUpdated(_startTime, _endTime);
     }
     
     function updateWhitelist(address[] calldata users, bool status) external onlyOwner {
@@ -138,41 +88,40 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
     
     function buyTokens(uint256 _amount) public payable nonReentrant whenNotPaused {
         require(whitelist[msg.sender], "Not whitelisted");
+        require(block.timestamp >= startTime && block.timestamp <= endTime, "ICO not active");
+        require(!isFinalized, "ICO finalized");
         
-        Tier storage tier = tiers[currentTier];
-        require(block.timestamp >= tier.startTime && block.timestamp <= tier.endTime, "Tier not active");
-        require(tier.tokensSold + _amount <= tier.maxTokens, "Exceeds tier capacity");
-        
-        uint256 cost = (_amount * tier.price) / 1e18;
+        uint256 cost = (_amount * tokenPrice) / 1e18;
         require(msg.value == cost, "Incorrect payment");
         require(msg.value >= minInvestment, "Below min investment");
         require(investments[msg.sender] + msg.value <= maxInvestment, "Exceeds max investment");
+        require(totalRaised + msg.value <= hardCap, "Hard cap reached");
         
         investments[msg.sender] += msg.value;
-        tier.tokensSold += _amount;
         totalTokensSold += _amount;
+        totalRaised += msg.value;
         
-        uint256 purchaseTime = block.timestamp;
-        
+        // Immediate 50% distribution
         uint256 immediate = _amount / 2;
         require(token.transfer(msg.sender, immediate), "Transfer failed");
         
+        // Schedule 25% distributions at 30 and 60 days
         uint256 delayed = _amount / 4;
         distributions[msg.sender].push(Distribution({
             amount: delayed,
-            releaseTime: purchaseTime + 30 days,
+            releaseTime: block.timestamp + 30 days,
             claimed: false
         }));
         
         distributions[msg.sender].push(Distribution({
             amount: delayed,
-            releaseTime: purchaseTime + 60 days,
+            releaseTime: block.timestamp + 60 days,
             claimed: false
         }));
         
-        emit Buy(msg.sender, _amount, currentTier);
-        emit DistributionScheduled(msg.sender, delayed, purchaseTime + 30 days);
-        emit DistributionScheduled(msg.sender, delayed, purchaseTime + 60 days);
+        emit Buy(msg.sender, _amount);
+        emit DistributionScheduled(msg.sender, delayed, block.timestamp + 30 days);
+        emit DistributionScheduled(msg.sender, delayed, block.timestamp + 60 days);
     }
     
     function claimDistribution(uint256 index) external nonReentrant {
@@ -187,9 +136,9 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
     }
     
     function claimRefund() external nonReentrant {
-        require(block.timestamp > tiers[tiers.length - 1].endTime, "ICO not ended");
+        require(block.timestamp > endTime, "ICO not ended");
         require(!isFinalized, "ICO finalized");
-        require(address(this).balance < softCap, "Soft cap reached");
+        require(totalRaised < softCap, "Soft cap reached");
         
         uint256 investment = investments[msg.sender];
         require(investment > 0, "No investment");
@@ -209,9 +158,9 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
     }
     
     function finalize() external onlyOwner {
-        require(block.timestamp > tiers[tiers.length - 1].endTime, "ICO not ended");
+        require(block.timestamp > endTime, "ICO not ended");
         require(!isFinalized, "Already finalized");
-        require(address(this).balance >= softCap, "Soft cap not reached");
+        require(totalRaised >= softCap, "Soft cap not reached");
         
         isFinalized = true;
         
@@ -228,9 +177,23 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
     }
     
     receive() external payable {
-        Tier storage tier = tiers[currentTier];
-        uint256 amount = (msg.value * 1e18) / tier.price;
+        uint256 amount = (msg.value * 1e18) / tokenPrice;
         buyTokens(amount);
+    }
+
+    // View functions for frontend
+    function getICOStatus() external view returns (
+        bool isActive,
+        bool hasStarted,
+        bool hasEnded,
+        uint256 currentTime,
+        uint256 remainingTime
+    ) {
+        currentTime = block.timestamp;
+        isActive = currentTime >= startTime && currentTime <= endTime && !isFinalized;
+        hasStarted = currentTime >= startTime;
+        hasEnded = currentTime > endTime;
+        remainingTime = currentTime <= endTime ? endTime - currentTime : 0;
     }
 }
 

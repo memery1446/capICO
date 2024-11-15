@@ -11,7 +11,17 @@ const CAPICO_ABI = [
         },
         {
           "internalType": "uint256",
+          "name": "_tokenPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
           "name": "_softCap",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_hardCap",
           "type": "uint256"
         },
         {
@@ -25,24 +35,14 @@ const CAPICO_ABI = [
           "type": "uint256"
         },
         {
-          "internalType": "uint256[]",
-          "name": "_prices",
-          "type": "uint256[]"
+          "internalType": "uint256",
+          "name": "_startTime",
+          "type": "uint256"
         },
         {
-          "internalType": "uint256[]",
-          "name": "_maxTokens",
-          "type": "uint256[]"
-        },
-        {
-          "internalType": "uint256[]",
-          "name": "_startTimes",
-          "type": "uint256[]"
-        },
-        {
-          "internalType": "uint256[]",
-          "name": "_endTimes",
-          "type": "uint256[]"
+          "internalType": "uint256",
+          "name": "_endTime",
+          "type": "uint256"
         }
       ],
       "stateMutability": "nonpayable",
@@ -61,12 +61,6 @@ const CAPICO_ABI = [
           "indexed": false,
           "internalType": "uint256",
           "name": "amount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "tier",
           "type": "uint256"
         }
       ],
@@ -115,6 +109,25 @@ const CAPICO_ABI = [
         }
       ],
       "name": "Finalize",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newStartTime",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newEndTime",
+          "type": "uint256"
+        }
+      ],
+      "name": "ICOTimeUpdated",
       "type": "event"
     },
     {
@@ -172,19 +185,6 @@ const CAPICO_ABI = [
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "newTier",
-          "type": "uint256"
-        }
-      ],
-      "name": "TierAdvanced",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
           "indexed": true,
           "internalType": "address",
           "name": "user",
@@ -236,41 +236,6 @@ const CAPICO_ABI = [
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "_price",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_maxTokens",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_startTime",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_endTime",
-          "type": "uint256"
-        }
-      ],
-      "name": "addTier",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "advanceTier",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
           "name": "_amount",
           "type": "uint256"
         }
@@ -298,19 +263,6 @@ const CAPICO_ABI = [
       "name": "claimRefund",
       "outputs": [],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "currentTier",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -349,6 +301,19 @@ const CAPICO_ABI = [
     },
     {
       "inputs": [],
+      "name": "endTime",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "finalize",
       "outputs": [],
       "stateMutability": "nonpayable",
@@ -356,39 +321,45 @@ const CAPICO_ABI = [
     },
     {
       "inputs": [],
-      "name": "getCurrentTier",
+      "name": "getICOStatus",
       "outputs": [
         {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "price",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "maxTokens",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "tokensSold",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "startTime",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "endTime",
-              "type": "uint256"
-            }
-          ],
-          "internalType": "struct CapICO.Tier",
+          "internalType": "bool",
+          "name": "isActive",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "hasStarted",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "hasEnded",
+          "type": "bool"
+        },
+        {
+          "internalType": "uint256",
+          "name": "currentTime",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "remainingTime",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "hardCap",
+      "outputs": [
+        {
+          "internalType": "uint256",
           "name": "",
-          "type": "tuple"
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -506,38 +477,12 @@ const CAPICO_ABI = [
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "tiers",
+      "inputs": [],
+      "name": "startTime",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "price",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "maxTokens",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "tokensSold",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "startTime",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "endTime",
+          "name": "",
           "type": "uint256"
         }
       ],
@@ -552,6 +497,32 @@ const CAPICO_ABI = [
           "internalType": "contract Token",
           "name": "",
           "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "tokenPrice",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "totalRaised",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -586,6 +557,24 @@ const CAPICO_ABI = [
     {
       "inputs": [],
       "name": "unpause",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_startTime",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_endTime",
+          "type": "uint256"
+        }
+      ],
+      "name": "updateICOTime",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

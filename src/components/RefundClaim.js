@@ -1,55 +1,64 @@
-import React, { useState } from 'react';
-import styled from 'styled-components';
+import React, { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
 
-const Button = styled.button`
-  background-color: #4CAF50;
-  border: none;
-  color: white;
-  padding: 10px 20px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 14px;
-  margin: 4px 2px;
-  cursor: pointer;
-  &:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-  }
-`;
+export default function RefundClaim({ capICOContract, signer }) {
+  const [canClaim, setCanClaim] = useState(false);
+  const [investment, setInvestment] = useState('0');
 
-const ErrorMessage = styled.p`
-  color: #ff6b6b;
-  font-weight: bold;
-`;
+  useEffect(() => {
+    const checkRefundEligibility = async () => {
+      if (capICOContract && signer) {
+        const address = await signer.getAddress();
+        const [totalRaised, softCap, endTime, isFinalized] = await Promise.all([
+          capICOContract.totalRaised(),
+          capICOContract.softCap(),
+          capICOContract.endTime(),
+          capICOContract.isFinalized(),
+        ]);
 
-export default function RefundClaim({ capicoContract, account }) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+        const currentTime = Math.floor(Date.now() / 1000);
+        const icoEnded = currentTime > endTime.toNumber();
+        const softCapNotReached = totalRaised.lt(softCap);
 
-  const handleClaimRefund = async () => {
-    if (!capicoContract || !account) return;
+        setCanClaim(icoEnded && softCapNotReached && !isFinalized);
 
-    try {
-      setIsLoading(true);
-      setError(null);
-      const tx = await capicoContract.claimRefund();
-      await tx.wait();
-      alert('Refund claimed successfully!');
-    } catch (error) {
-      console.error('Error claiming refund:', error);
-      setError(`Failed to claim refund: ${error.message}`);
-    } finally {
-      setIsLoading(false);
+        const userInvestment = await capICOContract.investments(address);
+        setInvestment(ethers.utils.formatEther(userInvestment));
+      }
+    };
+
+    checkRefundEligibility();
+  }, [capICOContract, signer]);
+
+  const handleRefundClaim = async () => {
+    if (capICOContract && signer) {
+      try {
+        const tx = await capICOContract.connect(signer).claimRefund();
+        await tx.wait();
+        alert('Refund claimed successfully!');
+        setCanClaim(false);
+        setInvestment('0');
+      } catch (error) {
+        console.error('Refund claim failed:', error);
+        alert('Refund claim failed. Please check console for details.');
+      }
     }
   };
 
   return (
-    <div>
-      <Button onClick={handleClaimRefund} disabled={isLoading}>
-        {isLoading ? 'Processing...' : 'Claim Refund'}
-      </Button>
-      {error && <ErrorMessage>{error}</ErrorMessage>}
+    <div className="bg-white shadow-md rounded-lg p-6 mb-6">
+      <h2 className="text-xl font-semibold mb-4">Refund Claim</h2>
+      <p className="mb-4">Your investment: {investment} ETH</p>
+      {canClaim ? (
+        <button
+          onClick={handleRefundClaim}
+          className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+        >
+          Claim Refund
+        </button>
+      ) : (
+        <p className="text-gray-600">Refund is not available at this time.</p>
+      )}
     </div>
   );
 }

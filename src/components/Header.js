@@ -1,23 +1,11 @@
 import React from 'react';
-import styled from 'styled-components';
-
-const HeaderWrapper = styled.header`
-  background-color: #003152;
-  color: #ffffff;
-  padding: 20px;
-  width: 100%;
-  text-align: center;
-`;
-
-const Title = styled.h1`
-  margin: 0;
-  font-size: 2rem;
-`;
 
 export default function Header() {
   return (
-    <HeaderWrapper>
-      <Title>CapICO Crowdsale</Title>
-    </HeaderWrapper>
+    <header className="bg-blue-600 text-white p-4">
+      <div className="container mx-auto">
+        <h1 className="text-2xl font-bold">CapICO</h1>
+      </div>
+    </header>
   );
 }
