@@ -1,114 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { ethers } from 'ethers';
+import React, { useState } from 'react';
 
-const WhitelistWrapper = styled.div`
-  background-color: #2a2a2a;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-`;
-
-const Button = styled.button`
-  background-color: #4CAF50;
-  border: none;
-  color: white;
-  padding: 10px 20px;
-  text-align: center;
-  text-decoration: none;
-  display: inline-block;
-  font-size: 14px;
-  margin: 4px 2px;
-  cursor: pointer;
-  &:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-  }
-`;
-
-export default function WhitelistManagement({ capicoContract, account }) {
+export default function WhitelistManagement({ capICOContract, account }) {
   const [addresses, setAddresses] = useState('');
-  const [isAdding, setIsAdding] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [isOwner, setIsOwner] = useState(false);
+  const [status, setStatus] = useState(true);
 
-  useEffect(() => {
-    const checkOwnership = async () => {
-      if (capicoContract && account) {
-        try {
-          const owner = await capicoContract.owner();
-          setIsOwner(owner.toLowerCase() === account.toLowerCase());
-        } catch (error) {
-          console.error("Error checking ownership:", error);
-        }
-      }
-    };
-
-    checkOwnership();
-  }, [capicoContract, account]);
-
-  const handleWhitelistUpdate = async () => {
-    if (!capicoContract || !isOwner) {
-      setError("You don't have permission to update the whitelist");
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
+  const updateWhitelist = async () => {
+    if (!capICOContract) return;
     try {
       const addressList = addresses.split(',').map(addr => addr.trim());
-      
-      // Validate addresses
-      addressList.forEach(addr => {
-        if (!ethers.utils.isAddress(addr)) {
-          throw new Error(`Invalid address: ${addr}`);
-        }
-      });
-
-      const tx = await capicoContract.updateWhitelist(addressList, isAdding);
+      const tx = await capICOContract.updateWhitelist(addressList, status);
       await tx.wait();
-      setAddresses('');
-      alert(`Addresses ${isAdding ? 'added to' : 'removed from'} whitelist successfully!`);
+      alert('Whitelist updated successfully!');
     } catch (error) {
-      console.error('Error updating whitelist:', error);
-      setError(`Failed to ${isAdding ? 'add' : 'remove'} addresses ${isAdding ? 'to' : 'from'} whitelist. ${error.message}`);
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to update whitelist:', error);
+      alert('Failed to update whitelist. See console for details.');
     }
   };
 
-  if (!isOwner) {
-    return null; // Don't render anything if not the owner
-  }
-
   return (
-    <WhitelistWrapper>
-      <h3>Whitelist Management</h3>
-      <Input
-        type="text"
-        placeholder="Enter addresses separated by commas"
+    <div className="bg-white shadow-md rounded-lg p-6 mb-6">
+      <h2 className="text-2xl font-bold mb-4">Whitelist Management</h2>
+      <textarea
         value={addresses}
         onChange={(e) => setAddresses(e.target.value)}
+        placeholder="Enter addresses separated by commas"
+        className="w-full p-2 mb-2 border rounded"
+        rows={4}
       />
-      <Button onClick={() => setIsAdding(true)} disabled={isLoading}>
-        Set to Add
-      </Button>
-      <Button onClick={() => setIsAdding(false)} disabled={isLoading}>
-        Set to Remove
-      </Button>
-      <Button onClick={handleWhitelistUpdate} disabled={isLoading || !addresses.trim()}>
-        {isLoading ? 'Processing...' : `${isAdding ? 'Add' : 'Remove'} Addresses`}
-      </Button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-    </WhitelistWrapper>
+      <div className="mb-2">
+        <label className="inline-flex items-center">
+          <input
+            type="checkbox"
+            checked={status}
+            onChange={(e) => setStatus(e.target.checked)}
+            className="form-checkbox"
+          />
+          <span className="ml-2">Whitelist Status</span>
+        </label>
+      </div>
+      <button
+        onClick={updateWhitelist}
+        className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600"
+      >
+        Update Whitelist
+      </button>
+    </div>
   );
 }
 

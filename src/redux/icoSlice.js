@@ -3,17 +3,30 @@ import { createSlice } from '@reduxjs/toolkit';
 const icoSlice = createSlice({
   name: 'ico',
   initialState: {
-    currentTier: 0,
-    totalTokensSold: 0,
-    softCap: 0,
-    currentPrice: 0,
+    status: {
+      isActive: false,
+      hasStarted: false,
+      hasEnded: false,
+      currentTime: '0',
+      remainingTime: '0',
+    },
+    tokenPrice: '0',
+    softCap: '0',
+    hardCap: '0',
+    totalRaised: '0',
+    totalTokensSold: '0',
+    isLoading: false,
+    error: null,
   },
   reducers: {
-    setICOData: (state, action) => {
+    updateICOStatus: (state, action) => {
+      state.status = action.payload;
+    },
+    updateICOData: (state, action) => {
       return { ...state, ...action.payload };
     },
   },
 });
 
-export const { setICOData } = icoSlice.actions;
+export const { updateICOStatus, updateICOData } = icoSlice.actions;
 export default icoSlice.reducer;
