@@ -1,31 +1,16 @@
-import { createStore } from 'redux'
+import { configureStore } from '@reduxjs/toolkit';
+import accountReducer from './accountSlice';
+import blockchainReducer from './blockchainSlice';
+import icoReducer from './icoSlice';
+import uiReducer from './uiSlice';
 
-const initialState = {
-ico: {
-status: {
-isActive: false,
-hasStarted: false,
-hasEnded: false,
-currentTime: '0',
-remainingTime: '0',
-},
-tokenPrice: '0',
-softCap: '0',
-hardCap: '0',
-totalRaised: '0',
-totalTokensSold: '0',
-isLoading: false,
-error: null,
-}
-}
+const store = configureStore({
+  reducer: {
+    account: accountReducer,
+    blockchain: blockchainReducer,
+    ico: icoReducer,
+    ui: uiReducer
+  }
+});
 
-function rootReducer(state = initialState, action) {
-switch (action.type) {
-default:
-return state
-}
-}
-
-const store = createStore(rootReducer)
-
-export default store
+export default store;

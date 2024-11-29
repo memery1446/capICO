@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { setLoading, setError } from './blockchainSlice';
-import { setICOData } from './icoSlice';
+import { updateICOData } from './icoSlice'; 
 import { setAccountData } from './accountSlice';
 
 import CAPICO_ABI from '../abis/CapICO.json';
@@ -85,7 +85,7 @@ export const loadBlockchainData = () => async (dispatch) => {
       tokenBalance = 'N/A';
     }
 
-    dispatch(setICOData({ currentTier, totalTokensSold, softCap, currentPrice, tokenBalance }));
+    dispatch(updateICOData({ currentTier, totalTokensSold, softCap, currentPrice, tokenBalance }));
     dispatch(setLoading(false));
   } catch (error) {
     console.error('Error in loadBlockchainData:', error);
