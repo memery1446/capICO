@@ -3,7 +3,6 @@ import { Provider } from 'react-redux'
 import store from './redux/store'
 import CompleteDashboard from './components/CompleteDashboard';
 
-
 export default function App() {
   return (
     <Provider store={store}>
@@ -14,4 +13,3 @@ export default function App() {
     </Provider>
   );
 }
-
