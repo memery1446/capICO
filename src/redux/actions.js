@@ -1,45 +1,95 @@
-import React, { useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import actions from '../redux/actions';
-import { setLoading } from '../redux/blockchainSlice';
+import { ethers } from 'ethers';
+import { setLoading, setError } from './blockchainSlice';
+import { updateICOStatus, updateICOData } from './icoSlice'; 
+import { setAccountData } from './accountSlice';
+import { setLoading as setUILoading, addNotification } from './uiSlice';
+import { CAPICO_ADDRESS, CAPICO_ABI, TOKEN_ADDRESS, TOKEN_ABI } from '../config';
 
-const CompleteDashboard = () => {
-  console.log('HELLO FROM DASHBOARD');
-  const dispatch = useDispatch();
-  const { isLoading, error } = useSelector(state => state.blockchain);
-  
-  useEffect(() => {
-    const initBlockchain = async () => {
-      console.log('Loading state before init:', isLoading);
-      try {
-        console.log('Starting loadBlockchainData...');
-        const result = await dispatch(actions());
-        console.log('loadBlockchainData result:', result);
-      } catch (err) {
-        console.error('Error loading blockchain data:', err);
-      } finally {
-        console.log('Setting loading to false manually...');
-        dispatch(setLoading(false));
-        console.log('Loading state after setting false:', isLoading);
-      }
-    };
+export const loadBlockchainData = () => async (dispatch) => {
+  dispatch(setLoading(true));
+  try {
+    if (!window.ethereum) {
+      throw new Error('Please install MetaMask');
+    }
 
-    initBlockchain();
-  }, [dispatch]);
+    // Get and log chain ID details
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const network = await provider.getNetwork();
+    
+    console.log('Chain ID Details:', {
+      metaMaskChainId: parseInt(chainId, 16),
+      providerChainId: network.chainId,
+      expectedChainId: 1337, // Hardhat's default
+      networkName: network.name
+    });
 
-  console.log('Render cycle - loading state:', isLoading);
+    const signer = provider.getSigner();
+    const signerAddress = await signer.getAddress();
+    console.log('Connected Address:', signerAddress);
 
-  if (isLoading) {
-    return <div>
-      Loading... 
-      <button onClick={() => dispatch(setLoading(false))}>
-        Force Load
-      </button>
-    </div>;
+    const [account] = await window.ethereum.request({ 
+      method: 'eth_requestAccounts' 
+    });
+    const balance = ethers.utils.formatEther(await provider.getBalance(account));
+
+    dispatch(setAccountData({ account, balance }));
+    dispatch(setLoading(false));
+    
+    return { provider, signer };
+
+  } catch (error) {
+    console.error('Blockchain loading error:', {
+      message: error.message,
+      code: error.code,
+      data: error.data
+    });
+    dispatch(setError(error.message));
+    dispatch(setLoading(false));
+    throw error;
   }
-
-  return <div>Loaded!</div>;
 };
 
-export default CompleteDashboard;
+// Re-add buyTokens to fix the TokenPurchase import error
+export const buyTokens = (amount) => async (dispatch) => {
+  dispatch(setUILoading({ type: 'purchase', isLoading: true }));
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    
+    const capicoContract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, signer);
+    
+    const tokenPrice = await capicoContract.tokenPrice();
+    const cost = (parseFloat(amount) * parseFloat(ethers.utils.formatEther(tokenPrice))).toString();
+    const costInWei = ethers.utils.parseEther(cost);
+    const tokenAmount = ethers.utils.parseEther(amount.toString());
 
+    const tx = await capicoContract.buyTokens(tokenAmount, { value: costInWei });
+    
+    await tx.wait();
+
+    dispatch(addNotification({
+      type: 'success',
+      message: `Successfully purchased ${amount} tokens`,
+      title: 'Purchase Complete'
+    }));
+
+    return tx;
+  } catch (error) {
+    console.error('Error in buyTokens:', error);
+    dispatch(setError(error.message));
+    dispatch(addNotification({
+      type: 'error',
+      message: error.message || 'Failed to purchase tokens',
+      title: 'Purchase Failed'
+    }));
+    throw error;
+  } finally {
+    dispatch(setUILoading({ type: 'purchase', isLoading: false }));
+  }
+};
+
+export default {
+  loadBlockchainData,
+  buyTokens
+};

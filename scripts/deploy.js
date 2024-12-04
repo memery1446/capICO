@@ -10,32 +10,21 @@ async function main() {
   await token.deployed();
   console.log("Token deployed to:", token.address);
 
-  // Get current timestamp for tier timing
+  // Get current timestamp
   const currentTimestamp = Math.floor(Date.now() / 1000);
-  const day = 24 * 60 * 60;
-  
-  // Set up tier parameters
-  const startTime1 = currentTimestamp + 300; // Starts in 5 minutes
-  const endTime1 = startTime1 + (7 * day); // 7 days duration
-  const startTime2 = endTime1 + 1; // Starts right after tier 1
-  const endTime2 = startTime2 + (7 * day); // Another 7 days
+  const startTime = currentTimestamp + 300; // Starts in 5 minutes
+  const endTime = startTime + (7 * 24 * 60 * 60); // 7 days duration
 
   const CapICO = await ethers.getContractFactory("CapICO");
   const capico = await CapICO.deploy(
-    token.address,                    // token address
-    ethers.utils.parseEther("100"),   // softCap: 100 ETH
-    ethers.utils.parseEther("0.1"),   // minInvestment: 0.1 ETH
-    ethers.utils.parseEther("50"),    // maxInvestment: 50 ETH
-    [                                 // prices array
-      ethers.utils.parseEther("0.001"),  // Tier 1: 0.001 ETH per token
-      ethers.utils.parseEther("0.002")   // Tier 2: 0.002 ETH per token
-    ],
-    [                                 // maxTokens array
-      ethers.utils.parseEther("100000"),  // Tier 1: 100,000 tokens
-      ethers.utils.parseEther("100000")   // Tier 2: 100,000 tokens
-    ],
-    [startTime1, startTime2],         // startTimes array
-    [endTime1, endTime2]              // endTimes array
+    token.address,                      // Token contract address
+    ethers.utils.parseEther("0.001"),   // tokenPrice (in ETH)
+    ethers.utils.parseEther("50"),      // softCap (in ETH)
+    ethers.utils.parseEther("100"),     // hardCap (in ETH)
+    ethers.utils.parseEther("0.1"),     // minInvestment (in ETH)
+    ethers.utils.parseEther("10"),      // maxInvestment (in ETH)
+    startTime,                          // startTime
+    endTime                             // endTime
   );
 
   await capico.deployed();
@@ -46,26 +35,16 @@ async function main() {
   await token.transfer(capico.address, transferAmount);
   console.log("Transferred tokens to CapICO contract");
 
-  // Verify contract on Etherscan
-  console.log("Verifying contracts...");
-  try {
-    await hre.run("verify:verify", {
-      address: capico.address,
-      constructorArguments: [
-        token.address,
-        ethers.utils.parseEther("100"),
-        ethers.utils.parseEther("0.1"),
-        ethers.utils.parseEther("50"),
-        [ethers.utils.parseEther("0.001"), ethers.utils.parseEther("0.002")],
-        [ethers.utils.parseEther("100000"), ethers.utils.parseEther("100000")],
-        [startTime1, startTime2],
-        [endTime1, endTime2]
-      ],
-    });
-    console.log("CapICO verified on Etherscan");
-  } catch (error) {
-    console.error("Error verifying contract:", error);
-  }
+  // Log all constructor parameters for verification
+  console.log("Constructor Parameters:");
+  console.log("Token Address:", token.address);
+  console.log("Token Price:", ethers.utils.formatEther(ethers.utils.parseEther("0.001")), "ETH");
+  console.log("Soft Cap:", ethers.utils.formatEther(ethers.utils.parseEther("50")), "ETH");
+  console.log("Hard Cap:", ethers.utils.formatEther(ethers.utils.parseEther("100")), "ETH");
+  console.log("Min Investment:", ethers.utils.formatEther(ethers.utils.parseEther("0.1")), "ETH");
+  console.log("Max Investment:", ethers.utils.formatEther(ethers.utils.parseEther("10")), "ETH");
+  console.log("Start Time:", new Date(startTime * 1000).toLocaleString());
+  console.log("End Time:", new Date(endTime * 1000).toLocaleString());
 }
 
 main()

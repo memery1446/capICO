@@ -1,43 +1,28 @@
 import React, { useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import actions from '../redux/actions';  // Changed this line
-import { setLoading } from '../redux/blockchainSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { loadBlockchainData } from '../redux/actions';
+import ICOStatus from './ICOStatus';
+import TokenPurchase from './TokenPurchase';
+import UserAccount from './UserAccount';
 
 const CompleteDashboard = () => {
-  console.log('HELLO FROM DASHBOARD');
   const dispatch = useDispatch();
-  const { isLoading, error } = useSelector(state => state.blockchain);
-  
+  const { isLoading, error } = useSelector((state) => state.blockchain);
+
   useEffect(() => {
-    const initBlockchain = async () => {
-      console.log('Loading state before init:', isLoading);
-      try {
-        console.log('Starting loadBlockchainData...');
-        const result = await dispatch(actions.loadBlockchainData());  // Changed this line
-        console.log('loadBlockchainData result:', result);
-      } catch (err) {
-        console.error('Error loading blockchain data:', err);
-      } finally {
-        console.log('Setting loading to false manually...');
-        dispatch(setLoading(false));
-        console.log('Loading state after setting false:', isLoading);
-      }
-    };
-    initBlockchain();
+    dispatch(loadBlockchainData());
   }, [dispatch]);
 
-  console.log('Render cycle - loading state:', isLoading);
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
 
-  if (isLoading) {
-    return <div>
-      Loading... 
-      <button onClick={() => dispatch(setLoading(false))}>
-        Force Load
-      </button>
-    </div>;
-  }
-
-  return <div>Loaded!</div>;
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <ICOStatus />
+      <TokenPurchase />
+      <UserAccount />
+    </div>
+  );
 };
 
 export default CompleteDashboard;
