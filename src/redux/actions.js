@@ -3,7 +3,7 @@ import { setLoading, setError } from './blockchainSlice';
 import { updateICOData } from './icoSlice'; 
 import { setAccountData } from './accountSlice';
 import { setTokenBalance } from './userSlice';
-import { setLoading as setUILoading, addNotification } from './uiSlice';
+import { setLoading as setUILoading, addNotification, removeNotification as removeNotificationUI } from './uiSlice';
 import { CAPICO_ADDRESS, CAPICO_ABI } from '../config';
 
 export const loadBlockchainData = () => async (dispatch) => {
@@ -194,12 +194,39 @@ export const updateICOParams = (params) => async (dispatch) => {
   dispatch(updateICOData(params));
 };
 
+export const removeNotification = (index) => (dispatch) => {
+  dispatch(removeNotificationUI(index));
+};
+
+export const connectWallet = () => async (dispatch) => {
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    dispatch(setAccountData({ account: accounts[0] }));
+    dispatch(loadUserData(accounts[0]));
+  } catch (error) {
+    console.error('Failed to connect wallet:', error);
+    dispatch(addNotification({
+      type: 'error',
+      message: 'Failed to connect wallet',
+      title: 'Error'
+    }));
+  }
+};
+
+export const disconnectWallet = () => (dispatch) => {
+  dispatch(setAccountData({ account: null, balance: '0' }));
+  dispatch(setTokenBalance('0'));
+};
+
 const actions = {
   loadBlockchainData,
   buyTokens,
   loadUserData,
   fetchUserTokenBalance,
-  updateICOParams
+  updateICOParams,
+  removeNotification,
+  connectWallet,
+  disconnectWallet
 };
 
 export default actions;

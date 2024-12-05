@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { buyTokens, loadBlockchainData } from '../../redux/actions';
 import { Alert, AlertTitle, AlertDescription } from '../ui/Alert';
 import { Calculator, CreditCard, ArrowRight, Info } from 'lucide-react';
-import Loading from '../layout/Loading';
 
 const TokenPurchase = () => {
   const [amount, setAmount] = useState('');
@@ -70,10 +69,6 @@ const TokenPurchase = () => {
       console.error('Purchase failed:', error);
     }
   };
-
-  if (isLoading) {
-    return <Loading />;
-  }
 
   const progressPercentage = (parseFloat(totalRaised) / parseFloat(hardCap)) * 100;
 
