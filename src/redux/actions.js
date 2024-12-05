@@ -3,45 +3,32 @@ import { setLoading, setError } from './blockchainSlice';
 import { updateICOData } from './icoSlice'; 
 import { setAccountData } from './accountSlice';
 import { setTokenBalance } from './userSlice';
-import { setLoading as setUILoading, addNotification, removeNotification as removeNotificationUI } from './uiSlice';
-import { CAPICO_ADDRESS, CAPICO_ABI } from '../config';
+import { addNotification, removeNotification as removeNotificationAction } from './uiSlice';
+import { TOKEN_ADDRESS, TOKEN_ABI, CAPICO_ADDRESS, CAPICO_ABI } from '../config';
 
 export const loadBlockchainData = () => async (dispatch) => {
   dispatch(setLoading(true));
   console.log('Starting blockchain load');
   
   try {
-    // 1. Get base connection
-    console.log('Attempting to connect to Web3Provider');
     const provider = new ethers.providers.Web3Provider(window.ethereum);
-    console.log('Web3Provider connected');
-
-    console.log('Requesting accounts');
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    console.log('Accounts received:', accounts);
+    const accounts = await provider.listAccounts();
     const account = accounts[0];
     
-    // 2. Set basic account data
-    console.log('Fetching account balance');
-    const balance = await provider.getBalance(account);
-    console.log('Account balance:', ethers.utils.formatEther(balance));
-    dispatch(setAccountData({ 
-      account, 
-      balance: ethers.utils.formatEther(balance) 
-    }));
+    if (account) {
+      const balance = await provider.getBalance(account);
+      dispatch(setAccountData({ 
+        account, 
+        balance: ethers.utils.formatEther(balance) 
+      }));
 
-    // 3. Contract connection
-    console.log('Connecting to contract at address:', CAPICO_ADDRESS);
-    const signer = provider.getSigner();
-    const capicoContract = new ethers.Contract(
-      CAPICO_ADDRESS,
-      CAPICO_ABI,
-      signer
-    );
-    console.log('Contract connected');
+      const tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, provider);
+      const tokenBalance = await tokenContract.balanceOf(account);
+      dispatch(setTokenBalance(ethers.utils.formatEther(tokenBalance)));
+    }
 
-    // 4. Fetch ICO data
-    console.log('Fetching ICO data');
+    const capicoContract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, provider);
+    
     const [
       tokenPrice,
       softCap,
@@ -61,10 +48,7 @@ export const loadBlockchainData = () => async (dispatch) => {
       capicoContract.maxInvestment(),
       capicoContract.getICOStatus()
     ]);
-    console.log('ICO data fetched successfully');
 
-    // 5. Dispatch ICO data
-    console.log('Dispatching ICO data to store');
     dispatch(updateICOData({
       tokenPrice: ethers.utils.formatEther(tokenPrice),
       softCap: ethers.utils.formatEther(softCap),
@@ -82,7 +66,6 @@ export const loadBlockchainData = () => async (dispatch) => {
       }
     }));
 
-    console.log('Blockchain data loaded successfully');
     dispatch(setLoading(false));
   } catch (error) {
     console.error('LoadBlockchainData error:', error);
@@ -92,36 +75,16 @@ export const loadBlockchainData = () => async (dispatch) => {
 };
 
 export const buyTokens = (amount) => async (dispatch) => {
-  console.log('Starting buyTokens with amount:', amount);
   dispatch(setLoading(true));
   
   try {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
+    const capicoContract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, signer);
     
-    const capicoContract = new ethers.Contract(
-      CAPICO_ADDRESS,
-      CAPICO_ABI,
-      signer
-    );
-    
-    // Get token price
     const tokenPrice = await capicoContract.tokenPrice();
-    console.log('Token price:', ethers.utils.formatEther(tokenPrice));
-    
-    // Calculate cost in ETH
-    const cost = (parseFloat(amount) * parseFloat(ethers.utils.formatEther(tokenPrice))).toString();
-    const costInWei = ethers.utils.parseEther(cost);
-    const tokenAmount = ethers.utils.parseEther(amount.toString());
-
-    console.log('Sending transaction with:', {
-      tokenAmount: tokenAmount.toString(),
-      cost: costInWei.toString()
-    });
-
-    // Buy tokens
-    const tx = await capicoContract.buyTokens(tokenAmount, { value: costInWei });
-    console.log('Transaction sent:', tx.hash);
+    const cost = ethers.utils.parseEther((parseFloat(amount) * parseFloat(ethers.utils.formatEther(tokenPrice))).toFixed(18));
+    const tx = await capicoContract.buyTokens(ethers.utils.parseEther(amount), { value: cost });
     
     dispatch(addNotification({
       type: 'info',
@@ -130,7 +93,6 @@ export const buyTokens = (amount) => async (dispatch) => {
     }));
 
     await tx.wait();
-    console.log('Transaction confirmed');
 
     dispatch(addNotification({
       type: 'success',
@@ -138,10 +100,7 @@ export const buyTokens = (amount) => async (dispatch) => {
       title: 'Purchase Complete'
     }));
 
-    // Reload blockchain data to update balances and ICO status
     dispatch(loadBlockchainData());
-
-    return tx;
   } catch (error) {
     console.error('Error in buyTokens:', error);
     dispatch(setError(error.message));
@@ -150,59 +109,25 @@ export const buyTokens = (amount) => async (dispatch) => {
       message: error.message || 'Failed to purchase tokens',
       title: 'Purchase Failed'
     }));
-    throw error;
   } finally {
     dispatch(setLoading(false));
   }
-};
-
-export const fetchUserTokenBalance = (account) => async (dispatch) => {
-  try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const contract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, provider);
-    const balance = await contract.balanceOf(account);
-    dispatch(setTokenBalance(ethers.utils.formatEther(balance)));
-  } catch (error) {
-    console.error('Error fetching token balance:', error);
-    dispatch(setError(error.message));
-  }
-};
-
-export const loadUserData = (account) => async (dispatch) => {
-  dispatch(setLoading(true));
-  try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const balance = await provider.getBalance(account);
-    dispatch(setAccountData({ 
-      account, 
-      balance: ethers.utils.formatEther(balance) 
-    }));
-    dispatch(fetchUserTokenBalance(account));
-  } catch (error) {
-    console.error('LoadUserData error:', error);
-    dispatch(setError(error.message));
-  } finally {
-    dispatch(setLoading(false));
-  }
-};
-
-export const updateICOParams = (params) => async (dispatch) => {
-  // Implement the logic to update ICO parameters
-  console.log('Updating ICO parameters:', params);
-  // You would typically make an API call here to update the parameters on the blockchain
-  // For now, we'll just dispatch an action to update the state
-  dispatch(updateICOData(params));
-};
-
-export const removeNotification = (index) => (dispatch) => {
-  dispatch(removeNotificationUI(index));
 };
 
 export const connectWallet = () => async (dispatch) => {
   try {
-    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    dispatch(setAccountData({ account: accounts[0] }));
-    dispatch(loadUserData(accounts[0]));
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = provider.getSigner();
+    const address = await signer.getAddress();
+    const balance = await provider.getBalance(address);
+    
+    dispatch(setAccountData({ 
+      account: address, 
+      balance: ethers.utils.formatEther(balance) 
+    }));
+
+    dispatch(loadBlockchainData());
   } catch (error) {
     console.error('Failed to connect wallet:', error);
     dispatch(addNotification({
@@ -218,15 +143,92 @@ export const disconnectWallet = () => (dispatch) => {
   dispatch(setTokenBalance('0'));
 };
 
+export const removeNotification = (index) => (dispatch) => {
+  dispatch(removeNotificationAction(index));
+};
+
+export const loadUserData = (account) => async (dispatch) => {
+  dispatch(setLoading(true));
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, provider);
+    const capicoContract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, provider);
+
+    const [tokenBalance, ethBalance, investments] = await Promise.all([
+      tokenContract.balanceOf(account),
+      provider.getBalance(account),
+      capicoContract.investments(account)
+    ]);
+
+    dispatch(setTokenBalance(ethers.utils.formatEther(tokenBalance)));
+    dispatch(setAccountData({
+      account,
+      balance: ethers.utils.formatEther(ethBalance)
+    }));
+
+    // You might want to store the investments data in a separate slice
+    // For now, we'll just log it
+    console.log('User investments:', ethers.utils.formatEther(investments));
+
+    dispatch(setLoading(false));
+  } catch (error) {
+    console.error('Error loading user data:', error);
+    dispatch(setError(error.message));
+    dispatch(addNotification({
+      type: 'error',
+      message: 'Failed to load user data',
+      title: 'Error'
+    }));
+    dispatch(setLoading(false));
+  }
+};
+
+export const updateICOParams = (params) => async (dispatch) => {
+  dispatch(setLoading(true));
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const capicoContract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, signer);
+    
+    // Assuming updateICOParameters is a function in your smart contract
+    const tx = await capicoContract.updateICOParameters(
+      ethers.utils.parseEther(params.tokenPrice),
+      ethers.utils.parseEther(params.softCap),
+      ethers.utils.parseEther(params.hardCap),
+      Math.floor(new Date(params.startDate).getTime() / 1000),
+      Math.floor(new Date(params.endDate).getTime() / 1000)
+    );
+    
+    await tx.wait();
+    
+    dispatch(addNotification({
+      type: 'success',
+      message: 'ICO parameters updated successfully',
+      title: 'Update Successful'
+    }));
+    
+    dispatch(loadBlockchainData());
+  } catch (error) {
+    console.error('Error updating ICO parameters:', error);
+    dispatch(setError(error.message));
+    dispatch(addNotification({
+      type: 'error',
+      message: 'Failed to update ICO parameters',
+      title: 'Update Failed'
+    }));
+  } finally {
+    dispatch(setLoading(false));
+  }
+};
+
 const actions = {
   loadBlockchainData,
   buyTokens,
-  loadUserData,
-  fetchUserTokenBalance,
-  updateICOParams,
-  removeNotification,
   connectWallet,
-  disconnectWallet
+  disconnectWallet,
+  removeNotification,
+  loadUserData,
+  updateICOParams,
 };
 
 export default actions;

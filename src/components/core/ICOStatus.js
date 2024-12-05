@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { Clock, TrendingUp, Users, Coins } from 'lucide-react';
+import { Clock, TrendingUp, Users, Coins, BarChart } from 'lucide-react';
 
 const ICOStatus = () => {
   const { 
@@ -9,7 +9,9 @@ const ICOStatus = () => {
     softCap,
     hardCap,
     totalRaised,
-    totalTokensSold
+    totalTokensSold,
+    minInvestment,
+    maxInvestment
   } = useSelector(state => state.ico);
 
   const [timeRemaining, setTimeRemaining] = useState({
@@ -41,6 +43,7 @@ const ICOStatus = () => {
   }, [status?.remainingTime]);
 
   const progressPercentage = (parseFloat(totalRaised) / parseFloat(hardCap)) * 100;
+  const tokensSoldPercentage = (parseFloat(totalTokensSold) / parseFloat(hardCap)) * 100;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -94,6 +97,29 @@ const ICOStatus = () => {
         <div className="mt-4 flex justify-between text-sm text-gray-500">
           <span>Soft Cap: {softCap} ETH</span>
           <span>Hard Cap: {hardCap} ETH</span>
+        </div>
+
+        <h3 className="text-lg font-semibold mt-6 mb-2">Token Distribution</h3>
+        <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-green-500" 
+            style={{ width: `${tokensSoldPercentage}%` }}
+          />
+        </div>
+        <div className="mt-2 flex justify-between text-sm">
+          <span>Tokens Sold: {totalTokensSold}</span>
+          <span>{tokensSoldPercentage.toFixed(2)}%</span>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-gray-500">Min Investment</p>
+            <p className="font-semibold">{minInvestment} ETH</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Max Investment</p>
+            <p className="font-semibold">{maxInvestment} ETH</p>
+          </div>
         </div>
       </div>
     </div>

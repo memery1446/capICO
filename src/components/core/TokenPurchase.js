@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { buyTokens, loadBlockchainData } from '../../redux/actions';
 import { Alert, AlertTitle, AlertDescription } from '../ui/Alert';
-import { Calculator, CreditCard, ArrowRight, Info } from 'lucide-react';
+import { Calculator, CreditCard, ArrowRight, Info, AlertTriangle } from 'lucide-react';
 
 const TokenPurchase = () => {
   const [amount, setAmount] = useState('');
   const [isCalculating, setIsCalculating] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const dispatch = useDispatch();
 
   const { 
@@ -26,7 +27,6 @@ const TokenPurchase = () => {
     dispatch(loadBlockchainData());
   }, [dispatch]);
 
-  // Calculated values
   const tokenAmount = amount ? parseFloat(amount) : 0;
   const ethCost = tokenAmount * parseFloat(tokenPrice || '0');
   const remainingToHardCap = parseFloat(hardCap || '0') - parseFloat(totalRaised || '0');
@@ -50,6 +50,13 @@ const TokenPurchase = () => {
     }
   };
 
+  const handleSliderChange = (e) => {
+    const value = parseFloat(e.target.value);
+    setAmount(value.toFixed(6));
+    setIsCalculating(true);
+    setTimeout(() => setIsCalculating(false), 300);
+  };
+
   const handleMaxClick = () => {
     const maxTokens = Math.min(
       maxPossiblePurchase,
@@ -61,13 +68,21 @@ const TokenPurchase = () => {
   const handlePurchase = async (e) => {
     e.preventDefault();
     if (!canPurchase) return;
+    setShowConfirmation(true);
+  };
 
+  const confirmPurchase = async () => {
     try {
       await dispatch(buyTokens(tokenAmount));
       setAmount('');
+      setShowConfirmation(false);
     } catch (error) {
       console.error('Purchase failed:', error);
     }
+  };
+
+  const cancelPurchase = () => {
+    setShowConfirmation(false);
   };
 
   const progressPercentage = (parseFloat(totalRaised) / parseFloat(hardCap)) * 100;
@@ -135,6 +150,21 @@ const TokenPurchase = () => {
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Amount Slider
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={maxPossiblePurchase}
+              step={0.000001}
+              value={amount}
+              onChange={handleSliderChange}
+              className="w-full"
+            />
+          </div>
+
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Calculator className="w-4 h-4 text-gray-500" />
@@ -157,6 +187,12 @@ const TokenPurchase = () => {
                 <span className="text-gray-600">Your Balance:</span>
                 <span className="font-medium">{parseFloat(balance || '0').toFixed(6)} ETH</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Remaining Balance:</span>
+                <span className="font-medium">
+                  {isCalculating ? '...' : `${(parseFloat(balance || '0') - ethCost).toFixed(6)} ETH`}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -175,17 +211,45 @@ const TokenPurchase = () => {
           </button>
 
           {!canPurchase && amount && (
-            <p className="mt-2 text-sm text-red-600 text-center">
-              {!account ? 'Please connect your wallet first' :
-               !status?.isActive ? 'ICO is not active' :
-               parseFloat(balance || '0') < ethCost ? 'Insufficient balance' :
-               tokenAmount < parseFloat(minInvestment || '0') ? 'Amount below minimum' :
-               tokenAmount > maxPossiblePurchase ? 'Amount above maximum' :
-               'Invalid amount'}
-            </p>
+            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="flex items-center">
+                <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
+                <p className="text-sm text-red-600">
+                  {!account ? 'Please connect your wallet first' :
+                   !status?.isActive ? 'ICO is not active' :
+                   parseFloat(balance || '0') < ethCost ? 'Insufficient balance' :
+                   tokenAmount < parseFloat(minInvestment || '0') ? 'Amount below minimum' :
+                   tokenAmount > maxPossiblePurchase ? 'Amount above maximum' :
+                   'Invalid amount'}
+                </p>
+              </div>
+            </div>
           )}
         </form>
       </div>
+
+      {showConfirmation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Confirm Purchase</h3>
+            <p>Are you sure you want to purchase {tokenAmount.toFixed(6)} tokens for {ethCost.toFixed(6)} ETH?</p>
+            <div className="mt-6 flex justify-end space-x-4">
+              <button
+                onClick={cancelPurchase}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPurchase}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
