@@ -4,12 +4,11 @@ import { Provider } from 'react-redux';
 import store from './redux/store';
 import App from './App';
 import './index.css'; 
-import ErrorBoundary from './components/ErrorBoundary';
+import ErrorBoundary from './components/layout/ErrorBoundary';  // Updated path
 import './index.css';
 
 const container = document.getElementById('root');
 const root = createRoot(container);
-
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
@@ -19,3 +18,4 @@ root.render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+

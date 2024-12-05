@@ -1,0 +1,104 @@
+import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { Clock, TrendingUp, Users, Coins } from 'lucide-react';
+
+const ICOStatus = () => {
+  const { 
+    status,
+    tokenPrice,
+    softCap,
+    hardCap,
+    totalRaised,
+    totalTokensSold
+  } = useSelector(state => state.ico);
+
+  const [timeRemaining, setTimeRemaining] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = parseInt(status?.remainingTime) * 1000 - now;
+
+      if (distance < 0) {
+        clearInterval(timer);
+        return;
+      }
+
+      setTimeRemaining({
+        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((distance % (1000 * 60)) / 1000)
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [status?.remainingTime]);
+
+  const progressPercentage = (parseFloat(totalRaised) / parseFloat(hardCap)) * 100;
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="p-6 border-b border-gray-200">
+        <h2 className="text-2xl font-semibold mb-4">ICO Status</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-center">
+            <Clock className="w-5 h-5 mr-2 text-blue-500" />
+            <div>
+              <p className="text-sm text-gray-500">Time Remaining</p>
+              <p className="font-semibold">
+                {timeRemaining.days}d {timeRemaining.hours}h {timeRemaining.minutes}m {timeRemaining.seconds}s
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center">
+            <TrendingUp className="w-5 h-5 mr-2 text-green-500" />
+            <div>
+              <p className="text-sm text-gray-500">Token Price</p>
+              <p className="font-semibold">{tokenPrice} ETH</p>
+            </div>
+          </div>
+          <div className="flex items-center">
+            <Users className="w-5 h-5 mr-2 text-purple-500" />
+            <div>
+              <p className="text-sm text-gray-500">Total Raised</p>
+              <p className="font-semibold">{totalRaised} ETH</p>
+            </div>
+          </div>
+          <div className="flex items-center">
+            <Coins className="w-5 h-5 mr-2 text-yellow-500" />
+            <div>
+              <p className="text-sm text-gray-500">Tokens Sold</p>
+              <p className="font-semibold">{totalTokensSold}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="p-6">
+        <h3 className="text-lg font-semibold mb-2">Funding Progress</h3>
+        <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-blue-500" 
+            style={{ width: `${progressPercentage}%` }}
+          />
+        </div>
+        <div className="mt-2 flex justify-between text-sm">
+          <span>{totalRaised} ETH</span>
+          <span>{hardCap} ETH</span>
+        </div>
+        <div className="mt-4 flex justify-between text-sm text-gray-500">
+          <span>Soft Cap: {softCap} ETH</span>
+          <span>Hard Cap: {hardCap} ETH</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ICOStatus;
+

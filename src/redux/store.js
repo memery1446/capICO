@@ -1,16 +1,17 @@
 import { configureStore } from '@reduxjs/toolkit';
+import icoReducer from './icoSlice';
 import accountReducer from './accountSlice';
 import blockchainReducer from './blockchainSlice';
-import icoReducer from './icoSlice';
-import uiReducer from './uiSlice';
+import userReducer from './userSlice';
 
 const store = configureStore({
   reducer: {
+    ico: icoReducer,
     account: accountReducer,
     blockchain: blockchainReducer,
-    ico: icoReducer,
-    ui: uiReducer
-  }
+    user: userReducer,
+  },
 });
 
 export default store;
+

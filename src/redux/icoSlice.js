@@ -15,6 +15,8 @@ const icoSlice = createSlice({
     hardCap: '0',
     totalRaised: '0',
     totalTokensSold: '0',
+    minInvestment: '0',
+    maxInvestment: '0',
     isLoading: false,
     error: null,
   },
@@ -30,3 +32,4 @@ const icoSlice = createSlice({
 
 export const { updateICOStatus, updateICOData } = icoSlice.actions;
 export default icoSlice.reducer;
+

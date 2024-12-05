@@ -8,9 +8,11 @@ const blockchainSlice = createSlice({
   },
   reducers: {
     setLoading: (state, action) => {
+      console.log('setLoading called with:', action.payload);
       state.isLoading = action.payload;
     },
     setError: (state, action) => {
+      console.log('setError called with:', action.payload);
       state.error = action.payload;
     },
   },
@@ -18,3 +20,4 @@ const blockchainSlice = createSlice({
 
 export const { setLoading, setError } = blockchainSlice.actions;
 export default blockchainSlice.reducer;
+
