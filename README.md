@@ -1,13 +1,17 @@
-# Sample Hardhat Project
+# capICO - Customizable Capped ICO DApp
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+capICO is a decentralized application (DApp) for running customizable capped Initial Coin Offerings (ICOs) on the Ethereum blockchain. It provides a user-friendly interface for both ICO administrators and participants.
 
-Try running some of the following tasks:
+## Features
 
-```shell
-npx hardhat help
-npx hardhat test
-GAS_REPORT=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.js
-```
+- Customizable ICO parameters (token price, soft cap, hard cap, start/end times)
+- Whitelist management for early access
+- Real-time dashboard with ICO progress
+- Admin panel for managing ICO settings
+- Responsive design for desktop and mobile devices
+- Internationalization support
+
+## Installation
+
+1. Clone the repository:
+

@@ -8,7 +8,7 @@ import DashboardOverview from './components/dashboard/DashboardOverview';
 import TokenPurchase from './components/core/TokenPurchase';
 import ICOStatus from './components/core/ICOStatus';
 import UserAccount from './components/core/UserAccount';
-import VestingSchedule from './components/vesting/VestingSchedule';
+import VestingScheduleViewer from './components/vesting/VestingScheduleViewer';
 import AdminPanel from './components/admin/AdminPanel';
 import Notifications from './components/ui/Notifications';
 import WalletConnection from './components/core/WalletConnection';
@@ -30,7 +30,7 @@ const AppContent = () => {
             <UserAccount />
           </div>
           <div className="mt-6">
-            <VestingSchedule />
+            <VestingScheduleViewer />
           </div>
           <div className="mt-6">
             <AdminPanel />

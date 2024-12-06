@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { setLoading, setError } from './blockchainSlice';
-import { updateICOData } from './icoSlice'; 
+import { updateICOData } from './icoSlice';
 import { setAccountData } from './accountSlice';
 import { setTokenBalance } from './userSlice';
 import { addNotification, removeNotification as removeNotificationAction } from './uiSlice';
@@ -221,6 +221,90 @@ export const updateICOParams = (params) => async (dispatch) => {
   }
 };
 
+export const updateWhitelist = (addresses) => async (dispatch) => {
+  dispatch(setLoading(true));
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const capicoContract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, signer);
+    
+    const tx = await capicoContract.updateWhitelist(addresses, true);
+    await tx.wait();
+    
+    dispatch(addNotification({
+      type: 'success',
+      message: 'Whitelist updated successfully',
+      title: 'Whitelist Update'
+    }));
+    
+    dispatch(setLoading(false));
+  } catch (error) {
+    console.error('Error updating whitelist:', error);
+    dispatch(setError(error.message));
+    dispatch(addNotification({
+      type: 'error',
+      message: 'Failed to update whitelist',
+      title: 'Error'
+    }));
+    dispatch(setLoading(false));
+  }
+};
+
+export const fetchVestingSchedule = (account) => async (dispatch) => {
+  dispatch(setLoading(true));
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const capicoContract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, provider);
+    
+    // Get the user's total investment
+    const investment = await capicoContract.investments(account);
+    
+    // Get the token price
+    const tokenPrice = await capicoContract.tokenPrice();
+    
+    // Calculate the total tokens bought (investment / tokenPrice)
+    const totalTokens = investment.mul(ethers.utils.parseEther('1')).div(tokenPrice);
+    
+    // Calculate distributions
+    const immediateDistribution = totalTokens.div(2);
+    const delayedDistribution = totalTokens.div(4);
+    
+    // Get the current timestamp and ICO start time
+    const currentTime = Math.floor(Date.now() / 1000);
+    const startTime = (await capicoContract.startTime()).toNumber();
+    
+    // Create the vesting schedule
+    const vestingSchedule = [
+      {
+        releaseDate: new Date(startTime * 1000).toISOString(),
+        percentage: 50,
+        amount: ethers.utils.formatEther(immediateDistribution),
+        released: true
+      },
+      {
+        releaseDate: new Date((startTime + 30 * 24 * 60 * 60) * 1000).toISOString(),
+        percentage: 25,
+        amount: ethers.utils.formatEther(delayedDistribution),
+        released: currentTime > (startTime + 30 * 24 * 60 * 60)
+      },
+      {
+        releaseDate: new Date((startTime + 60 * 24 * 60 * 60) * 1000).toISOString(),
+        percentage: 25,
+        amount: ethers.utils.formatEther(delayedDistribution),
+        released: currentTime > (startTime + 60 * 24 * 60 * 60)
+      }
+    ];
+
+    dispatch(setLoading(false));
+    return vestingSchedule;
+  } catch (error) {
+    console.error('Error fetching vesting schedule:', error);
+    dispatch(setError('Failed to fetch vesting schedule'));
+    dispatch(setLoading(false));
+    throw error;
+  }
+};
+
 const actions = {
   loadBlockchainData,
   buyTokens,
@@ -229,6 +313,7 @@ const actions = {
   removeNotification,
   loadUserData,
   updateICOParams,
+  fetchVestingSchedule,
 };
 
 export default actions;

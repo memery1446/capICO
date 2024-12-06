@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { buyTokens, loadBlockchainData } from '../../redux/actions';
-import { Alert, AlertTitle, AlertDescription } from '../ui/Alert';
-import { Calculator, CreditCard, ArrowRight, Info, AlertTriangle } from 'lucide-react';
+import { Card } from "../ui/Card";
+import { Alert } from "../ui/Alert";
+import { Progress } from "../ui/Progress";
+import { Slider } from "../ui/Slider";
+import { AlertTriangle, CreditCard, ArrowRight } from 'lucide-react';
 
 const TokenPurchase = () => {
   const [amount, setAmount] = useState('');
+  const [ethAmount, setEthAmount] = useState('');
   const [isCalculating, setIsCalculating] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const dispatch = useDispatch();
@@ -27,53 +31,53 @@ const TokenPurchase = () => {
     dispatch(loadBlockchainData());
   }, [dispatch]);
 
-  const tokenAmount = amount ? parseFloat(amount) : 0;
-  const ethCost = tokenAmount * parseFloat(tokenPrice || '0');
-  const remainingToHardCap = parseFloat(hardCap || '0') - parseFloat(totalRaised || '0');
-  const maxPossiblePurchase = Math.min(
-    parseFloat(maxInvestment || '0'),
-    remainingToHardCap / parseFloat(tokenPrice || '1')
-  );
+  useEffect(() => {
+    const calculateEthAmount = () => {
+      if (amount && tokenPrice) {
+        const calculatedEthAmount = (parseFloat(amount) * parseFloat(tokenPrice)).toFixed(6);
+        setEthAmount(calculatedEthAmount);
+      } else {
+        setEthAmount('');
+      }
+    };
 
-  const canPurchase = account && 
-    parseFloat(balance || '0') >= ethCost && 
-    tokenAmount >= parseFloat(minInvestment || '0') && 
-    tokenAmount <= maxPossiblePurchase &&
-    status?.isActive;
+    setIsCalculating(true);
+    const timer = setTimeout(calculateEthAmount, 500);
+    return () => clearTimeout(timer);
+  }, [amount, tokenPrice]);
 
   const handleAmountChange = (e) => {
     const value = e.target.value;
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setAmount(value);
       setIsCalculating(true);
-      setTimeout(() => setIsCalculating(false), 300);
     }
   };
 
-  const handleSliderChange = (e) => {
-    const value = parseFloat(e.target.value);
-    setAmount(value.toFixed(6));
+  const handleSliderChange = (value) => {
+    setAmount(value[0].toFixed(6));
     setIsCalculating(true);
-    setTimeout(() => setIsCalculating(false), 300);
   };
 
   const handleMaxClick = () => {
     const maxTokens = Math.min(
-      maxPossiblePurchase,
-      parseFloat(balance || '0') / parseFloat(tokenPrice || '1')
+      parseFloat(maxInvestment),
+      parseFloat(balance) / parseFloat(tokenPrice),
+      (parseFloat(hardCap) - parseFloat(totalRaised)) / parseFloat(tokenPrice)
     );
     setAmount(maxTokens.toFixed(6));
   };
 
-  const handlePurchase = async (e) => {
+  const handlePurchase = (e) => {
     e.preventDefault();
-    if (!canPurchase) return;
-    setShowConfirmation(true);
+    if (canPurchase) {
+      setShowConfirmation(true);
+    }
   };
 
   const confirmPurchase = async () => {
     try {
-      await dispatch(buyTokens(tokenAmount));
+      await dispatch(buyTokens(amount));
       setAmount('');
       setShowConfirmation(false);
     } catch (error) {
@@ -85,172 +89,150 @@ const TokenPurchase = () => {
     setShowConfirmation(false);
   };
 
+  const tokenAmount = amount ? parseFloat(amount) : 0;
+  const remainingToHardCap = parseFloat(hardCap) - parseFloat(totalRaised);
+  const maxPossiblePurchase = Math.min(
+    parseFloat(maxInvestment) || 0,
+    (parseFloat(hardCap) - parseFloat(totalRaised)) / (parseFloat(tokenPrice) || 1)
+  );
+
+  const canPurchase = account && 
+    parseFloat(balance) >= parseFloat(ethAmount) && 
+    tokenAmount >= parseFloat(minInvestment) && 
+    tokenAmount <= maxPossiblePurchase &&
+    status?.isActive;
+
   const progressPercentage = (parseFloat(totalRaised) / parseFloat(hardCap)) * 100;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <Card className="max-w-2xl mx-auto p-6">
+      <h2 className="text-2xl font-bold mb-4">Purchase Tokens</h2>
       {!status?.isActive && (
-        <Alert className="mb-6 bg-yellow-50 border-yellow-200">
-          <Info className="h-4 w-4 text-yellow-600" />
-          <AlertTitle>ICO is not active</AlertTitle>
-          <AlertDescription>
-            The ICO is currently not active. Please wait for the sale to begin.
-          </AlertDescription>
+        <Alert className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <h3 className="font-semibold">ICO is not active</h3>
+          <p>The ICO is currently not active. Please wait for the sale to begin.</p>
         </Alert>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold">ICO Progress</h3>
-          <div className="mt-2 h-4 bg-gray-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-blue-500" 
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-          <div className="mt-2 flex justify-between text-sm text-gray-600">
-            <span>{totalRaised} ETH raised</span>
-            <span>{hardCap} ETH goal</span>
-          </div>
+      <div className="mb-6">
+        <h4 className="text-sm font-medium mb-2">ICO Progress</h4>
+        <Progress value={progressPercentage} max={100} className="mb-2" />
+        <div className="flex justify-between text-sm text-gray-600">
+          <span>{totalRaised} ETH raised</span>
+          <span>{hardCap} ETH goal</span>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold">Purchase Tokens</h3>
-          <p className="text-gray-500 text-sm mt-1">
-            Current price: {tokenPrice || '0'} ETH per token
-          </p>
-        </div>
-
-        <form onSubmit={handlePurchase} className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Token Amount
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={amount}
-                onChange={handleAmountChange}
-                placeholder="Enter amount of tokens"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={isLoading || !status?.isActive}
-              />
-              <button
-                type="button"
-                onClick={handleMaxClick}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
-              >
-                MAX
-              </button>
-            </div>
-            <div className="mt-1 text-sm text-gray-500">
-              Min: {minInvestment || '0'} tokens | Max: {maxPossiblePurchase.toFixed(6)} tokens
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Amount Slider
-            </label>
+      <form onSubmit={handlePurchase} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Token Amount
+          </label>
+          <div className="flex items-center space-x-2">
             <input
-              type="range"
-              min={0}
-              max={maxPossiblePurchase}
-              step={0.000001}
+              type="text"
               value={amount}
-              onChange={handleSliderChange}
-              className="w-full"
+              onChange={handleAmountChange}
+              placeholder="Enter amount of tokens"
+              disabled={isLoading || !status?.isActive}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
             />
+            <button
+              type="button"
+              onClick={handleMaxClick}
+              disabled={isLoading || !status?.isActive}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+            >
+              MAX
+            </button>
           </div>
+        </div>
 
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Calculator className="w-4 h-4 text-gray-500" />
-              <span className="font-medium">Purchase Details</span>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Amount Slider
+          </label>
+          <Slider
+            min={0}
+            max={maxPossiblePurchase || 0}
+            step={0.000001}
+            value={[parseFloat(amount) || 0]}
+            onValueChange={(value) => {
+              setAmount(value[0].toFixed(6));
+              setIsCalculating(true);
+            }}
+            disabled={isLoading || !status?.isActive}
+          />
+        </div>
+
+        <div className="bg-gray-50 rounded-lg p-4">
+          <h4 className="text-sm font-medium mb-2">Purchase Details</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Token Amount:</span>
+              <span className="font-medium">
+                {isCalculating ? '...' : `${tokenAmount.toFixed(6)} Tokens`}
+              </span>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Token Amount:</span>
-                <span className="font-medium">
-                  {isCalculating ? '...' : `${tokenAmount.toFixed(6)} Tokens`}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Cost:</span>
-                <span className="font-medium">
-                  {isCalculating ? '...' : `${ethCost.toFixed(6)} ETH`}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Your Balance:</span>
-                <span className="font-medium">{parseFloat(balance || '0').toFixed(6)} ETH</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Remaining Balance:</span>
-                <span className="font-medium">
-                  {isCalculating ? '...' : `${(parseFloat(balance || '0') - ethCost).toFixed(6)} ETH`}
-                </span>
-              </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Cost:</span>
+              <span className="font-medium">
+                {isCalculating ? '...' : `${ethAmount} ETH`}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Your Balance:</span>
+              <span className="font-medium">{parseFloat(balance).toFixed(6)} ETH</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Remaining Balance:</span>
+              <span className="font-medium">
+                {isCalculating ? '...' : `${(parseFloat(balance) - parseFloat(ethAmount)).toFixed(6)} ETH`}
+              </span>
             </div>
           </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={!canPurchase || isLoading}
-            className={`w-full flex items-center justify-center space-x-2 px-6 py-3 rounded-lg text-white font-medium transition-colors ${
-              canPurchase && !isLoading
-                ? 'bg-blue-600 hover:bg-blue-700'
-                : 'bg-gray-300 cursor-not-allowed'
-            }`}
-          >
-            <CreditCard className="w-5 h-5" />
-            <span>{isLoading ? 'Processing...' : 'Purchase Tokens'}</span>
-            <ArrowRight className="w-5 h-5" />
-          </button>
+        <button
+          type="submit"
+          disabled={!canPurchase || isLoading}
+          className="w-full flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+        >
+          <CreditCard className="w-5 h-5 mr-2" />
+          <span>{isLoading ? 'Processing...' : 'Purchase Tokens'}</span>
+          <ArrowRight className="w-5 h-5 ml-2" />
+        </button>
 
-          {!canPurchase && amount && (
-            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
-              <div className="flex items-center">
-                <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
-                <p className="text-sm text-red-600">
-                  {!account ? 'Please connect your wallet first' :
-                   !status?.isActive ? 'ICO is not active' :
-                   parseFloat(balance || '0') < ethCost ? 'Insufficient balance' :
-                   tokenAmount < parseFloat(minInvestment || '0') ? 'Amount below minimum' :
-                   tokenAmount > maxPossiblePurchase ? 'Amount above maximum' :
-                   'Invalid amount'}
-                </p>
-              </div>
-            </div>
-          )}
-        </form>
-      </div>
+        {!canPurchase && amount && (
+          <Alert className="mt-4">
+            <AlertTriangle className="h-4 w-4" />
+            <h3 className="font-semibold">Unable to purchase</h3>
+            <p>
+              {!account ? 'Please connect your wallet first' :
+               !status?.isActive ? 'ICO is not active' :
+               parseFloat(balance) < parseFloat(ethAmount) ? 'Insufficient balance' :
+               tokenAmount < parseFloat(minInvestment) ? 'Amount below minimum' :
+               tokenAmount > maxPossiblePurchase ? 'Amount above maximum' :
+               'Invalid amount'}
+            </p>
+          </Alert>
+        )}
+      </form>
 
       {showConfirmation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
+          <div className="bg-white p-6 rounded-lg">
             <h3 className="text-lg font-semibold mb-4">Confirm Purchase</h3>
-            <p>Are you sure you want to purchase {tokenAmount.toFixed(6)} tokens for {ethCost.toFixed(6)} ETH?</p>
-            <div className="mt-6 flex justify-end space-x-4">
-              <button
-                onClick={cancelPurchase}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmPurchase}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Confirm
-              </button>
+            <p>Are you sure you want to purchase {tokenAmount.toFixed(6)} tokens for {ethAmount} ETH?</p>
+            <div className="mt-4 flex justify-end space-x-2">
+              <button onClick={cancelPurchase} className="px-4 py-2 border border-gray-300 rounded-md">Cancel</button>
+              <button onClick={confirmPurchase} className="px-4 py-2 bg-blue-500 text-white rounded-md">Confirm</button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </Card>
   );
 };
 
