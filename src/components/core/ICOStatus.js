@@ -21,26 +21,28 @@ const ICOStatus = () => {
     seconds: 0
   });
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = parseInt(status?.remainingTime) * 1000 - now;
+useEffect(() => {
+  console.log('ICOStatus - Initial remainingTime:', status?.remainingTime);
+  
+  const timer = setInterval(() => {
+    if (!status?.remainingTime) {
+      console.log('ICOStatus - No remaining time');
+      return;
+    }
+    
+    const remainingSeconds = parseInt(status?.remainingTime);
+    console.log('ICOStatus - Parsed seconds:', remainingSeconds);
+    
+    setTimeRemaining({
+      days: Math.floor(remainingSeconds / 86400),
+      hours: Math.floor((remainingSeconds % 86400) / 3600),
+      minutes: Math.floor((remainingSeconds % 3600) / 60),
+      seconds: remainingSeconds % 60
+    });
+  }, 1000);
 
-      if (distance < 0) {
-        clearInterval(timer);
-        return;
-      }
-
-      setTimeRemaining({
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        seconds: Math.floor((distance % (1000 * 60)) / 1000)
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [status?.remainingTime]);
+  return () => clearInterval(timer);
+}, [status?.remainingTime]);
 
   const progressPercentage = (parseFloat(totalRaised) / parseFloat(hardCap)) * 100;
   const tokensSoldPercentage = (parseFloat(totalTokensSold) / parseFloat(hardCap)) * 100;

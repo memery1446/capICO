@@ -25,7 +25,14 @@ const icoSlice = createSlice({
       state.status = action.payload;
     },
     updateICOData: (state, action) => {
-      return { ...state, ...action.payload };
+      return {
+        ...state,
+        ...action.payload,
+        status: {
+          ...state.status,
+          ...action.payload.status
+        }
+      };
     },
   },
 });

@@ -49,22 +49,27 @@ export const loadBlockchainData = () => async (dispatch) => {
       capicoContract.getICOStatus()
     ]);
 
-    dispatch(updateICOData({
-      tokenPrice: ethers.utils.formatEther(tokenPrice),
-      softCap: ethers.utils.formatEther(softCap),
-      hardCap: ethers.utils.formatEther(hardCap),
-      totalRaised: ethers.utils.formatEther(totalRaised),
-      totalTokensSold: ethers.utils.formatEther(totalTokensSold),
-      minInvestment: ethers.utils.formatEther(minInvestment),
-      maxInvestment: ethers.utils.formatEther(maxInvestment),
-      status: {
-        isActive: icoStatus.isActive,
-        hasStarted: icoStatus.hasStarted,
-        hasEnded: icoStatus.hasEnded,
-        currentTime: icoStatus.currentTime.toString(),
-        remainingTime: icoStatus.remainingTime.toString()
-      }
-    }));
+// Add these right after the Promise.all([...]) call
+console.log('ICO Status Raw:', icoStatus);
+console.log('Current Time:', icoStatus.currentTime.toString());
+console.log('Remaining Time:', icoStatus.remainingTime.toString());
+
+dispatch(updateICOData({
+  tokenPrice: ethers.utils.formatEther(tokenPrice),
+  softCap: ethers.utils.formatEther(softCap),
+  hardCap: ethers.utils.formatEther(hardCap),
+  totalRaised: ethers.utils.formatEther(totalRaised),
+  totalTokensSold: ethers.utils.formatEther(totalTokensSold),
+  minInvestment: ethers.utils.formatEther(minInvestment),
+  maxInvestment: ethers.utils.formatEther(maxInvestment),
+  status: {
+    isActive: icoStatus.isActive,
+    hasStarted: icoStatus.hasStarted,
+    hasEnded: icoStatus.hasEnded,
+    currentTime: icoStatus.currentTime.toString(),
+    remainingTime: icoStatus.remainingTime.toString() // Remove the hex parsing since it's already a BigNumber
+  }
+}));
 
     dispatch(setLoading(false));
   } catch (error) {

@@ -23,12 +23,15 @@ const DashboardOverview = () => {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num);
   };
 
-  const timeRemaining = useMemo(() => {
-    const remaining = parseInt(status?.remainingTime) * 1000 - Date.now();
-    const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    return `${days}d ${hours}h`;
-  }, [status?.remainingTime]);
+const timeRemaining = useMemo(() => {
+    if (!status?.remainingTime) return "0d 0h 0m 0s";
+    const remainingSeconds = parseInt(status?.remainingTime);
+    const days = Math.floor(remainingSeconds / 86400);
+    const hours = Math.floor((remainingSeconds % 86400) / 3600);
+    const minutes = Math.floor((remainingSeconds % 3600) / 60);
+    const seconds = remainingSeconds % 60;
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+}, [status?.remainingTime]);
 
   const chartOptions = {
     chart: {
