@@ -14,6 +14,8 @@ const ICOStatus = () => {
     maxInvestment
   } = useSelector(state => state.ico);
 
+
+  const [localTime, setLocalTime] = useState(parseInt(status?.remainingTime || '0'));
   const [timeRemaining, setTimeRemaining] = useState({
     days: 0,
     hours: 0,
@@ -21,28 +23,32 @@ const ICOStatus = () => {
     seconds: 0
   });
 
-useEffect(() => {
-  console.log('ICOStatus - Initial remainingTime:', status?.remainingTime);
-  
-  const timer = setInterval(() => {
-    if (!status?.remainingTime) {
-      console.log('ICOStatus - No remaining time');
-      return;
-    }
+  useEffect(() => {
+    if (!status?.remainingTime) return;
+    setLocalTime(parseInt(status.remainingTime));
     
-    const remainingSeconds = parseInt(status?.remainingTime);
-    console.log('ICOStatus - Parsed seconds:', remainingSeconds);
-    
-    setTimeRemaining({
-      days: Math.floor(remainingSeconds / 86400),
-      hours: Math.floor((remainingSeconds % 86400) / 3600),
-      minutes: Math.floor((remainingSeconds % 3600) / 60),
-      seconds: remainingSeconds % 60
-    });
-  }, 1000);
+    const timer = setInterval(() => {
+        setLocalTime(prev => {
+            if (prev <= 0) {
+                clearInterval(timer);
+                return 0;
+            }
+            return prev - 1;
+        });
+    }, 1000);
 
-  return () => clearInterval(timer);
-}, [status?.remainingTime]);
+    return () => clearInterval(timer);
+  }, [status?.remainingTime]);
+
+  // Add this effect to update the display
+  useEffect(() => {
+    setTimeRemaining({
+      days: Math.floor(localTime / 86400),
+      hours: Math.floor((localTime % 86400) / 3600),
+      minutes: Math.floor((localTime % 3600) / 60),
+      seconds: localTime % 60
+    });
+  }, [localTime]);
 
   const progressPercentage = (parseFloat(totalRaised) / parseFloat(hardCap)) * 100;
   const tokensSoldPercentage = (parseFloat(totalTokensSold) / parseFloat(hardCap)) * 100;

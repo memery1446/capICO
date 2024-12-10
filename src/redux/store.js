@@ -19,7 +19,18 @@ const store = configureStore({
       thunk: {
         extraArgument: actions,
       },
+      serializableCheck: false, // Add this if you're getting serialization warnings
     }),
+      devTools: process.env.NODE_ENV !== 'production', // Explicitly enable DevTools
+});
+
+console.log('Initial State:', store.getState());
+console.log('Redux Store Structure:', {
+    ico: store.getState().ico,
+    account: store.getState().account,
+    blockchain: store.getState().blockchain,
+    user: store.getState().user,
+    ui: store.getState().ui
 });
 
 export default store;

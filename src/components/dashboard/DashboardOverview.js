@@ -1,11 +1,13 @@
-import React, { useMemo } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { Coins, Users, Clock, TrendingUp } from 'lucide-react';
 import { Card } from "../ui/Card";
 import { Progress } from "../ui/Progress";
 import ReactApexChart from 'react-apexcharts';
+import { loadBlockchainData } from '../../redux/actions'; 
 
 const DashboardOverview = () => {
+    const dispatch = useDispatch(); 
   const { 
     tokenPrice, 
     softCap, 
@@ -15,6 +17,8 @@ const DashboardOverview = () => {
     status
   } = useSelector(state => state.ico);
 
+  const [localTime, setLocalTime] = useState(parseInt(status?.remainingTime || '0'));
+
   const progressPercentage = useMemo(() => 
     (parseFloat(totalRaised) / parseFloat(hardCap)) * 100,
   [totalRaised, hardCap]);
@@ -23,15 +27,40 @@ const DashboardOverview = () => {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num);
   };
 
-const timeRemaining = useMemo(() => {
-    if (!status?.remainingTime) return "0d 0h 0m 0s";
-    const remainingSeconds = parseInt(status?.remainingTime);
-    const days = Math.floor(remainingSeconds / 86400);
-    const hours = Math.floor((remainingSeconds % 86400) / 3600);
-    const minutes = Math.floor((remainingSeconds % 3600) / 60);
-    const seconds = remainingSeconds % 60;
+  useEffect(() => {
+    if (!status?.remainingTime) return;
+    setLocalTime(parseInt(status.remainingTime));
+    
+    const timer = setInterval(() => {
+        setLocalTime(prev => {
+            if (prev <= 0) {
+                clearInterval(timer);
+                return 0;
+            }
+            return prev - 1;
+        });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [status?.remainingTime]);
+
+
+useEffect(() => {
+    const pollStatus = setInterval(() => {
+        dispatch(loadBlockchainData());  // This will refresh the contract status
+    }, 5000);  // Poll every 5 seconds
+
+    return () => clearInterval(pollStatus);
+}, [dispatch]);
+
+  const timeRemaining = useMemo(() => {
+    const days = Math.floor(localTime / 86400);
+    const hours = Math.floor((localTime % 86400) / 3600);
+    const minutes = Math.floor((localTime % 3600) / 60);
+    const seconds = localTime % 60;
+    
     return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-}, [status?.remainingTime]);
+  }, [localTime]);
 
   const chartOptions = {
     chart: {
