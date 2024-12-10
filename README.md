@@ -1,3 +1,4 @@
+HEAD
 # capICO - Customizable Capped ICO DApp
 
 capICO is a decentralized application (DApp) for running customizable capped Initial Coin Offerings (ICOs) on the Ethereum blockchain. It provides a user-friendly interface for both ICO administrators and participants.
