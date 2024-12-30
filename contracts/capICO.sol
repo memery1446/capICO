@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
 import "./Token.sol";
@@ -10,18 +10,18 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
     Token public immutable token;
     
     struct Distribution {
-        uint256 amount;         // Amount to distribute
-        uint256 releaseTime;    // When tokens can be claimed
-        bool claimed;           // Whether tokens have been claimed
+        uint256 amount;
+        uint256 releaseTime;
+        bool claimed;
     }
     
-    uint256 public startTime;
-    uint256 public endTime;
-    uint256 public tokenPrice;  // Price per token in wei
-    uint256 public softCap;
-    uint256 public hardCap;     // New feature: Maximum raise amount
-    uint256 public minInvestment;
-    uint256 public maxInvestment;
+    uint256 public immutable startTime;
+    uint256 public immutable endTime;
+    uint256 public immutable tokenPrice;
+    uint256 public immutable softCap;
+    uint256 public immutable hardCap;
+    uint256 public immutable minInvestment;
+    uint256 public immutable maxInvestment;
     uint256 public totalTokensSold;
     uint256 public totalRaised;
     bool public isFinalized;
@@ -36,7 +36,6 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
     event Refunded(address indexed user, uint256 amount);
     event DistributionScheduled(address indexed user, uint256 amount, uint256 releaseTime);
     event Finalize(uint256 tokensSold, uint256 ethRaised);
-    event ICOTimeUpdated(uint256 newStartTime, uint256 newEndTime);
     
     constructor(
         Token _token,
@@ -68,17 +67,6 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         emit WhitelistUpdated(msg.sender, true);
     }
     
-    // New feature: Allow owner to update ICO times if needed
-    function updateICOTime(uint256 _startTime, uint256 _endTime) external onlyOwner {
-        require(block.timestamp < startTime, "ICO already started");
-        require(_startTime > block.timestamp, "Invalid start time");
-        require(_endTime > _startTime, "Invalid end time");
-        
-        startTime = _startTime;
-        endTime = _endTime;
-        emit ICOTimeUpdated(_startTime, _endTime);
-    }
-    
     function updateWhitelist(address[] calldata users, bool status) external onlyOwner {
         for (uint256 i = 0; i < users.length; i++) {
             whitelist[users[i]] = status;
@@ -101,11 +89,9 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         totalTokensSold += _amount;
         totalRaised += msg.value;
         
-        // Immediate 50% distribution
         uint256 immediate = _amount / 2;
         require(token.transfer(msg.sender, immediate), "Transfer failed");
         
-        // Schedule 25% distributions at 30 and 60 days
         uint256 delayed = _amount / 4;
         distributions[msg.sender].push(Distribution({
             amount: delayed,
@@ -180,20 +166,6 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         uint256 amount = (msg.value * 1e18) / tokenPrice;
         buyTokens(amount);
     }
-
-    // View functions for frontend
-    function getICOStatus() external view returns (
-        bool isActive,
-        bool hasStarted,
-        bool hasEnded,
-        uint256 currentTime,
-        uint256 remainingTime
-    ) {
-        currentTime = block.timestamp;
-        isActive = currentTime >= startTime && currentTime <= endTime && !isFinalized;
-        hasStarted = currentTime >= startTime;
-        hasEnded = currentTime > endTime;
-        remainingTime = currentTime <= endTime ? endTime - currentTime : 0;
-    }
 }
+
 
