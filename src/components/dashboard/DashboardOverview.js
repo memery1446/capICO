@@ -1,66 +1,31 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import React, { useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import { Coins, Users, Clock, TrendingUp } from 'lucide-react';
 import { Card } from "../ui/Card";
 import { Progress } from "../ui/Progress";
 import ReactApexChart from 'react-apexcharts';
-import { loadBlockchainData } from '../../redux/actions'; 
+import { useICOStatus } from '../../hooks/useICOStatus';
 
 const DashboardOverview = () => {
-    const dispatch = useDispatch(); 
-  const { 
-    tokenPrice, 
-    softCap, 
-    hardCap, 
-    totalRaised, 
+  const { contracts } = useSelector(state => state.contract);
+  const {
+    timeRemaining,
+    totalRaised,
     totalTokensSold,
-    status
-  } = useSelector(state => state.ico);
-
-  const [localTime, setLocalTime] = useState(parseInt(status?.remainingTime || '0'));
-
-  const progressPercentage = useMemo(() => 
-    (parseFloat(totalRaised) / parseFloat(hardCap)) * 100,
-  [totalRaised, hardCap]);
+    tokenPrice,
+    softCap,
+    hardCap,
+    isActive
+  } = useICOStatus(contracts?.ico);
 
   const formatNumber = (num) => {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(num);
   };
 
-  useEffect(() => {
-    if (!status?.remainingTime) return;
-    setLocalTime(parseInt(status.remainingTime));
-    
-    const timer = setInterval(() => {
-        setLocalTime(prev => {
-            if (prev <= 0) {
-                clearInterval(timer);
-                return 0;
-            }
-            return prev - 1;
-        });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [status?.remainingTime]);
-
-
-useEffect(() => {
-    const pollStatus = setInterval(() => {
-        dispatch(loadBlockchainData());  // This will refresh the contract status
-    }, 5000);  // Poll every 5 seconds
-
-    return () => clearInterval(pollStatus);
-}, [dispatch]);
-
-  const timeRemaining = useMemo(() => {
-    const days = Math.floor(localTime / 86400);
-    const hours = Math.floor((localTime % 86400) / 3600);
-    const minutes = Math.floor((localTime % 3600) / 60);
-    const seconds = localTime % 60;
-    
-    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
-  }, [localTime]);
+  const progressPercentage = useMemo(() => 
+    (parseFloat(totalRaised) / parseFloat(hardCap)) * 100,
+    [totalRaised, hardCap]
+  );
 
   const chartOptions = {
     chart: {
@@ -99,6 +64,7 @@ useEffect(() => {
           {formatNumber(progressPercentage)}% of {formatNumber(hardCap)} ETH goal
         </p>
       </Card>
+
       <Card className="p-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-500">Tokens Sold</h3>
@@ -109,16 +75,18 @@ useEffect(() => {
           Token Price: {tokenPrice} ETH
         </p>
       </Card>
+
       <Card className="p-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-500">Time Remaining</h3>
           <Clock className="h-5 w-5 text-purple-500" />
         </div>
-        <div className="text-2xl font-bold">{timeRemaining}</div>
+        <div className="text-2xl font-bold">{timeRemaining.formatted}</div>
         <p className="text-xs text-gray-500 mt-2">
-          {status?.isActive ? 'ICO is active' : 'ICO is not active'}
+          {isActive ? 'ICO is active' : 'ICO is not active'}
         </p>
       </Card>
+
       <Card className="p-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-500">Soft Cap</h3>
@@ -129,9 +97,15 @@ useEffect(() => {
           {parseFloat(totalRaised) >= parseFloat(softCap) ? 'Soft cap reached' : 'Soft cap not reached'}
         </p>
       </Card>
+
       <Card className="md:col-span-2 lg:col-span-4 p-6">
         <h3 className="text-lg font-medium text-gray-700 mb-4">Fundraising Progress</h3>
-        <ReactApexChart options={chartOptions} series={chartSeries} type="donut" height={350} />
+        <ReactApexChart 
+          options={chartOptions} 
+          series={chartSeries} 
+          type="donut" 
+          height={350} 
+        />
       </Card>
     </div>
   );

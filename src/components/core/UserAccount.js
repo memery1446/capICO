@@ -1,84 +1,53 @@
-import React, { useEffect, useState } from 'react';
+// src/components/core/UserAccount.js
+import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { loadUserData } from '../../redux/actions';
-import { Wallet, Clock, ArrowDownUp, ArrowUpCircle } from 'lucide-react';
+import { Card } from '../ui/Card';
 import { ethers } from 'ethers';
-import { CAPICO_ADDRESS, CAPICO_ABI } from '../../config';
 
 const UserAccount = () => {
   const dispatch = useDispatch();
-  const { account, balance } = useSelector(state => state.account);
-  const { tokenBalance } = useSelector(state => state.user);
-  const isLoading = useSelector(state => state.blockchain.isLoading);
-  const [userContribution, setUserContribution] = useState('0');
+  const { account, balance, tokenBalance, isWhitelisted } = useSelector(state => state.user);
 
   useEffect(() => {
     if (account) {
-      dispatch(loadUserData(account));
-      fetchUserContribution(account);
+      dispatch(loadUserData());
     }
   }, [account, dispatch]);
 
-  const fetchUserContribution = async (address) => {
-    try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const capicoContract = new ethers.Contract(CAPICO_ADDRESS, CAPICO_ABI, provider);
-      const contribution = await capicoContract.investments(address);
-      setUserContribution(ethers.utils.formatEther(contribution));
-    } catch (error) {
-      console.error('Error fetching user contribution:', error);
-    }
-  };
-
-  if (isLoading) {
-    return <div>Loading user data...</div>;
-  }
-
   if (!account) {
-    return (
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">User Account</h2>
-        <p>Please connect your wallet to view account information.</p>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <h2 className="text-xl font-semibold mb-4">User Account</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex items-center">
-          <Wallet className="w-5 h-5 mr-2 text-blue-500" />
-          <div>
-            <p className="text-sm text-gray-600">Connected Address:</p>
-            <p className="font-medium">{account}</p>
-          </div>
-        </div>
-        <div className="flex items-center">
-          <Clock className="w-5 h-5 mr-2 text-green-500" />
-          <div>
-            <p className="text-sm text-gray-600">ETH Balance:</p>
-            <p className="font-medium">{parseFloat(balance).toFixed(4)} ETH</p>
-          </div>
-        </div>
-        <div className="flex items-center">
-          <ArrowDownUp className="w-5 h-5 mr-2 text-purple-500" />
-          <div>
-            <p className="text-sm text-gray-600">Token Balance:</p>
-            <p className="font-medium">{parseFloat(tokenBalance).toFixed(4)} Tokens</p>
-          </div>
-        </div>
-        <div className="flex items-center">
-          <ArrowUpCircle className="w-5 h-5 mr-2 text-yellow-500" />
-          <div>
-            <p className="text-sm text-gray-600">Your Contribution:</p>
-            <p className="font-medium">{parseFloat(userContribution).toFixed(4)} ETH</p>
-          </div>
-        </div>
+    <Card className="p-4">
+      <h2 className="text-lg font-semibold mb-2">Account Info</h2>
+      <div className="space-y-2">
+        <p className="text-sm">
+          <span className="text-gray-500">Address:</span>
+          <span className="ml-2 font-mono">
+            {`${account.slice(0, 6)}...${account.slice(-4)}`}
+          </span>
+        </p>
+        <p className="text-sm">
+          <span className="text-gray-500">ETH Balance:</span>
+          <span className="ml-2">{ethers.utils.formatEther(balance)} ETH</span>
+        </p>
+        <p className="text-sm">
+          <span className="text-gray-500">Token Balance:</span>
+          <span className="ml-2">{ethers.utils.formatEther(tokenBalance)} tokens</span>
+        </p>
+        <p className="text-sm">
+          <span className="text-gray-500">Status:</span>
+          <span className={`ml-2 ${isWhitelisted ? 'text-green-500' : 'text-red-500'}`}>
+            {isWhitelisted ? 'Whitelisted' : 'Not Whitelisted'}
+          </span>
+        </p>
       </div>
-    </div>
+    </Card>
   );
 };
 
 export default UserAccount;
+
 
