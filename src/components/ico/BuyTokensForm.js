@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import { buyTokens } from '../../features/ico/icoSlice';
 import web3Service from '../../services/web3Service';
 
-const BuyTokensForm = () => {
+const BuyTokensForm = ({ isWalletConnected }) => {
   const [amount, setAmount] = useState('');
   const [cooldownTime, setCooldownTime] = useState(0);
   const dispatch = useDispatch();
@@ -55,7 +55,7 @@ const BuyTokensForm = () => {
           step="0.01"
           required
         />
-        <button type="submit" disabled={isLoading || cooldownTime > 0}>
+        <button type="submit" disabled={isLoading || cooldownTime > 0 || !isWalletConnected}>
           {isLoading ? 'Processing...' : 'Buy Tokens'}
         </button>
       </form>

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import web3Service from './services/web3Service';
+import BuyTokensForm from './components/ico/BuyTokensForm';
+import WalletConnection from './components/common/WalletConnection';
 
 function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [icoStatus, setIcoStatus] = useState(null);
   const [userBalance, setUserBalance] = useState(null);
-  const [contributionAmount, setContributionAmount] = useState('');
   const [error, setError] = useState(null);
+  const [countdown, setCountdown] = useState(null);
 
   useEffect(() => {
     const initializeWeb3 = async () => {
@@ -18,12 +20,12 @@ function App() {
         }
       } catch (err) {
         console.error('Error initializing web3:', err);
-        setError(err.message || 'An unknown error occurred');
+        setError(err.message || 'An unknown error occurred while initializing');
       }
     };
 
     initializeWeb3();
-    const interval = setInterval(updateICOInfo, 10000); // Update every 10 seconds
+    const interval = setInterval(updateICOInfo, 5000); // Update every 5 seconds
     return () => clearInterval(interval);
   }, []);
 
@@ -34,24 +36,17 @@ function App() {
       const address = await web3Service.signer.getAddress();
       const balance = await web3Service.getTokenBalance(address);
       setUserBalance(balance);
+
+      if (!status.hasStarted) {
+        const timeLeft = status.startTime - status.currentTime;
+        setCountdown(formatCountdown(timeLeft));
+      } else {
+        setCountdown(null);
+      }
+      setError(null); // Clear any previous errors if successful
     } catch (err) {
       console.error('Error updating ICO info:', err);
       setError(err.message || 'An error occurred while updating ICO information');
-    }
-  };
-
-  const handleContribute = async () => {
-    try {
-      setError(null); // Clear any previous errors
-      if (!icoStatus.isActive) {
-        throw new Error('ICO is not active');
-      }
-      await web3Service.buyTokens(contributionAmount);
-      setContributionAmount('');
-      await updateICOInfo();
-    } catch (err) {
-      console.error('Error contributing:', err);
-      setError(err.message || 'An error occurred while contributing. Please check the console for more details.');
     }
   };
 
@@ -59,9 +54,16 @@ function App() {
     return new Date(timestamp * 1000).toLocaleString();
   };
 
+  const formatCountdown = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="App">
       <h1>ICO DApp</h1>
+      <WalletConnection isConnected={isConnected} setIsConnected={setIsConnected} />
       {error ? (
         <div>
           <p>Error: {error}</p>
@@ -71,7 +73,7 @@ function App() {
         <div>
           <p>Connected to Hardhat node</p>
           <h2>ICO Status</h2>
-          {icoStatus && (
+          {icoStatus ? (
             <div>
               <p>Total Raised: {icoStatus.totalRaised} ETH</p>
               <p>Soft Cap: {icoStatus.softCap} ETH</p>
@@ -80,24 +82,19 @@ function App() {
               <p>Start Time: {formatDate(icoStatus.startTime)}</p>
               <p>End Time: {formatDate(icoStatus.endTime)}</p>
               <p>Current Time: {formatDate(icoStatus.currentTime)}</p>
+              {countdown && <p>ICO starts in: {countdown}</p>}
               <p>ICO Active: {icoStatus.isActive ? 'Yes' : 'No'}</p>
               <p>Finalized: {icoStatus.isFinalized ? 'Yes' : 'No'}</p>
             </div>
+          ) : (
+            <p>Loading ICO status...</p>
           )}
           <h2>Your Information</h2>
-          <p>Your Token Balance: {userBalance} Tokens</p>
-          <input 
-            type="number" 
-            value={contributionAmount} 
-            onChange={(e) => setContributionAmount(e.target.value)} 
-            placeholder="Contribution amount (ETH)"
-          />
-          <button onClick={handleContribute} disabled={!icoStatus || !icoStatus.isActive}>
-            {!icoStatus || !icoStatus.isActive ? 'ICO Not Active' : 'Buy Tokens'}
-          </button>
+          <p>Your Token Balance: {userBalance || 'Loading...'} Tokens</p>
+          <BuyTokensForm isWalletConnected={isConnected} />
         </div>
       ) : (
-        <p>Connecting to Hardhat node...</p>
+        <p>Please connect your wallet to interact with the ICO</p>
       )}
     </div>
   );

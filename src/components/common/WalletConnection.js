@@ -12,22 +12,34 @@ const WalletConnection = () => {
 
   const checkConnection = async () => {
     try {
-      await web3Service.getAddress();
-      setIsConnected(true);
-      updateAddress();
+      const connected = await web3Service.isConnected();
+      setIsConnected(connected);
+      if (connected) {
+        updateAddress();
+      }
     } catch (error) {
+      console.error('Error checking connection:', error);
       setIsConnected(false);
     }
   };
 
   const updateAddress = async () => {
-    const addr = await web3Service.getAddress();
-    setAddress(addr.slice(0, 6) + '...' + addr.slice(-4));
+    try {
+      const addr = await web3Service.getAddress();
+      if (addr) {
+        setAddress(addr.slice(0, 6) + '...' + addr.slice(-4));
+      } else {
+        setAddress('');
+      }
+    } catch (error) {
+      console.error('Error updating address:', error);
+      setAddress('');
+    }
   };
 
   const handleConnect = async () => {
     try {
-      await web3Service.init();
+      await web3Service.connect();
       setIsConnected(true);
       updateAddress();
     } catch (error) {
@@ -49,7 +61,7 @@ const WalletConnection = () => {
     <div>
       {isConnected ? (
         <div>
-          <span>{address}</span>
+          <span>{address || 'Connected'}</span>
           <Button onClick={handleDisconnect} variant="outlined" color="secondary">
             Disconnect
           </Button>
@@ -64,6 +76,4 @@ const WalletConnection = () => {
 };
 
 export default WalletConnection;
-
-
 
