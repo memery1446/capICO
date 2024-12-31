@@ -15,8 +15,8 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         bool claimed;
     }
     
-    uint256 public immutable startTime;
-    uint256 public immutable endTime;
+    uint256 public startTime;
+    uint256 public endTime;
     uint256 public immutable tokenPrice;
     uint256 public immutable softCap;
     uint256 public immutable hardCap;
@@ -25,6 +25,7 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
     uint256 public totalTokensSold;
     uint256 public totalRaised;
     bool public isFinalized;
+    bool public isDemoMode = true;
     
     mapping(address => bool) public whitelist;
     mapping(address => uint256) public investments;
@@ -36,6 +37,8 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
     event Refunded(address indexed user, uint256 amount);
     event DistributionScheduled(address indexed user, uint256 amount, uint256 releaseTime);
     event Finalize(uint256 tokensSold, uint256 ethRaised);
+    event DemoModeToggled(bool isDemoMode);
+    event ICOTimesUpdated(uint256 newStartTime, uint256 newEndTime);
     
     constructor(
         Token _token,
@@ -93,21 +96,24 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         require(token.transfer(msg.sender, immediate), "Transfer failed");
         
         uint256 delayed = _amount / 4;
+        uint256 firstReleaseTime = isDemoMode ? block.timestamp + 2 minutes : block.timestamp + 30 days;
+        uint256 secondReleaseTime = isDemoMode ? block.timestamp + 4 minutes : block.timestamp + 60 days;
+
         distributions[msg.sender].push(Distribution({
             amount: delayed,
-            releaseTime: block.timestamp + 30 days,
+            releaseTime: firstReleaseTime,
             claimed: false
         }));
         
         distributions[msg.sender].push(Distribution({
             amount: delayed,
-            releaseTime: block.timestamp + 60 days,
+            releaseTime: secondReleaseTime,
             claimed: false
         }));
         
         emit Buy(msg.sender, _amount);
-        emit DistributionScheduled(msg.sender, delayed, block.timestamp + 30 days);
-        emit DistributionScheduled(msg.sender, delayed, block.timestamp + 60 days);
+        emit DistributionScheduled(msg.sender, delayed, firstReleaseTime);
+        emit DistributionScheduled(msg.sender, delayed, secondReleaseTime);
     }
     
     function claimDistribution(uint256 index) external nonReentrant {
@@ -162,10 +168,21 @@ contract CapICO is ReentrancyGuard, Pausable, Ownable {
         emit Finalize(totalTokensSold, value);
     }
     
+    function toggleDemoMode() external onlyOwner {
+        isDemoMode = !isDemoMode;
+        emit DemoModeToggled(isDemoMode);
+    }
+
+    function updateICOTimes(uint256 _startTime, uint256 _endTime) external onlyOwner {
+        require(_startTime < _endTime, "Invalid time range");
+        startTime = _startTime;
+        endTime = _endTime;
+        emit ICOTimesUpdated(_startTime, _endTime);
+    }
+    
     receive() external payable {
         uint256 amount = (msg.value * 1e18) / tokenPrice;
         buyTokens(amount);
     }
 }
-
 

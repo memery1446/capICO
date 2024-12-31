@@ -1,69 +1,61 @@
 const hre = require("hardhat");
+const ethers = hre.ethers;
 
 async function main() {
   const [deployer] = await ethers.getSigners();
-  console.log("Demo deploying contracts with account:", deployer.address);
+
+  console.log("Deploying contracts with the account:", deployer.address);
 
   // Deploy Token
   const Token = await ethers.getContractFactory("Token");
-  const token = await Token.deploy(
-    "Demo Token",
-    "DEMO",
-    "1000000"  // 1M tokens initial supply
-  );
+  const initialSupply = ethers.utils.parseEther("1000000"); // 1 million tokens
+  const token = await Token.deploy("MyToken", "MTK", 1000000); // 1 million tokens
+
   await token.deployed();
+
   console.log("Token deployed to:", token.address);
 
-  // Set short timeframes for demo testing
-  const now = Math.floor(Date.now() / 1000);
-  const startTime = now + 30;        // Starts in 30 seconds
-  const endTime = startTime + 300;   // Runs for 5 minutes
-
-  // Deploy ICO with small caps for easy testing
+  // Deploy CapICO
   const CapICO = await ethers.getContractFactory("CapICO");
-  const capico = await CapICO.deploy(
+  const tokenPrice = ethers.utils.parseEther("0.001"); // 0.001 ETH per token
+  const softCap = ethers.utils.parseEther("50"); // 50 ETH
+  const hardCap = ethers.utils.parseEther("200"); // 200 ETH
+  const minInvestment = ethers.utils.parseEther("0.1"); // 0.1 ETH
+  const maxInvestment = ethers.utils.parseEther("10"); // 10 ETH
+  const startTime = Math.floor(Date.now() / 1000) + 60; // Start in 1 minute
+  const endTime = startTime + 3600; // End 1 hour after start
+
+  const capICO = await CapICO.deploy(
     token.address,
-    ethers.utils.parseEther("0.001"),   // tokenPrice: 0.001 ETH
-    ethers.utils.parseEther("0.05"),    // softCap: 0.05 ETH
-    ethers.utils.parseEther("0.2"),     // hardCap: 0.2 ETH
-    ethers.utils.parseEther("0.01"),    // minInvestment: 0.01 ETH
-    ethers.utils.parseEther("0.1"),     // maxInvestment: 0.1 ETH
+    tokenPrice,
+    softCap,
+    hardCap,
+    minInvestment,
+    maxInvestment,
     startTime,
     endTime
   );
-  await capico.deployed();
-  console.log("CapICO deployed to:", capico.address);
 
-  // Transfer tokens to ICO contract
-  const transferAmount = ethers.utils.parseEther("1000"); // 1000 tokens for demo
-  await token.transfer(capico.address, transferAmount);
+  await capICO.deployed();
+
+  console.log("CapICO deployed to:", capICO.address);
+
+  // Transfer tokens to CapICO contract
+  const icoTokens = ethers.utils.parseEther("200000"); // 200,000 tokens for ICO
+  await token.transfer(capICO.address, icoTokens);
   console.log("Transferred tokens to CapICO contract");
 
-  console.log("\n--- DEMO DEPLOYMENT INFO ---");
-  console.log("Token:", token.address);
-  console.log("CapICO:", capico.address);
-  console.log("\nTimeline:");
-  console.log("ICO Starts: in 30 seconds");
-  console.log("ICO Duration: 5 minutes");
-  console.log("\nQuick Test Values:");
-  console.log("To participate, send between 0.01 and 0.1 ETH");
-  console.log("Token price: 0.001 ETH");
-  console.log("Soft cap: 0.05 ETH");
-  console.log("Hard cap: 0.2 ETH");
-
-  // Helpful testing info
-  console.log("\n--- TESTING GUIDE ---");
-  console.log("1. Wait 30 seconds for ICO to start");
-  console.log("2. Send ETH between 0.01 and 0.1 to:", capico.address);
-  console.log("3. Token Distribution:");
-  console.log("   - 50% immediately");
-  console.log("   - 25% after first vesting period");
-  console.log("   - 25% after second vesting period");
-
-  // Log actual timestamps for verification
-  console.log("\n--- TIMESTAMPS ---");
-  console.log("Start:", new Date(startTime * 1000).toLocaleString());
-  console.log("End:", new Date(endTime * 1000).toLocaleString());
+  // Verify deployments
+  console.log("\nDeployment verification:");
+  console.log("Token name:", await token.name());
+  console.log("Token symbol:", await token.symbol());
+  console.log("Token total supply:", ethers.utils.formatEther(await token.totalSupply()));
+  console.log("CapICO token address:", await capICO.token());
+  console.log("CapICO token price:", ethers.utils.formatEther(await capICO.tokenPrice()));
+  console.log("CapICO soft cap:", ethers.utils.formatEther(await capICO.softCap()));
+  console.log("CapICO hard cap:", ethers.utils.formatEther(await capICO.hardCap()));
+  console.log("CapICO start time:", new Date((await capICO.startTime()).toNumber() * 1000).toLocaleString());
+  console.log("CapICO end time:", new Date((await capICO.endTime()).toNumber() * 1000).toLocaleString());
 }
 
 main()
@@ -73,4 +65,3 @@ main()
     process.exit(1);
   });
 
-  

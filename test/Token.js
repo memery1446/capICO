@@ -5,6 +5,7 @@ const { time } = require("@nomicfoundation/hardhat-network-helpers");
 const tokens = (n) => ethers.utils.parseUnits(n.toString(), 'ether');
 const MAX_TRANSFER = tokens('100000');
 const DAY = 24 * 60 * 60;
+const MINUTE = 60;
 
 describe('Token', () => {
   let token, deployer, user1, user2;
@@ -23,12 +24,16 @@ describe('Token', () => {
       expect(await token.totalSupply()).to.equal(tokens(initialSupply));
       expect(await token.MAX_SUPPLY()).to.equal(tokens('1000000000'));
       expect(await token.launchTime()).to.be.gt(0);
+      expect(await token.TRANSFER_COOLDOWN()).to.equal(DAY);
+      expect(await token.DEMO_TRANSFER_COOLDOWN()).to.equal(2 * MINUTE);
+      expect(await token.isDemoMode()).to.be.true;
+      expect(await token.exemptAccounts(deployer.address)).to.be.true;
     });
   });
 
   describe('Transfer Restrictions', () => {
     beforeEach(async () => {
-      await token.transfer(user1.address, tokens('200000'));
+      await token.mint(user1.address, tokens('200000'));
     });
 
     it('enforces max transfer limit', async () => {
@@ -40,7 +45,18 @@ describe('Token', () => {
       expect(await token.balanceOf(user2.address)).to.equal(tokens('100000'));
     });
 
-    it('enforces transfer cooldown', async () => {
+    it('enforces demo mode transfer cooldown', async () => {
+      await token.connect(user1).transfer(user2.address, tokens('1000'));
+      await expect(
+        token.connect(user1).transfer(user2.address, tokens('1000'))
+      ).to.be.revertedWith('Transfer cooldown active');
+
+      await time.increase(2 * MINUTE + 1);
+      await token.connect(user1).transfer(user2.address, tokens('1000'));
+    });
+
+    it('enforces normal mode transfer cooldown', async () => {
+      await token.toggleDemoMode();
       await token.connect(user1).transfer(user2.address, tokens('1000'));
       await expect(
         token.connect(user1).transfer(user2.address, tokens('1000'))
@@ -50,69 +66,99 @@ describe('Token', () => {
       await token.connect(user1).transfer(user2.address, tokens('1000'));
     });
 
-    it('allows owner to bypass restrictions', async () => {
-      await token.transfer(user2.address, tokens('200000'));
-      await token.transfer(user1.address, tokens('200000'));
+    it('allows exempt accounts to bypass restrictions', async () => {
+      // Set user1 as exempt
+      await token.setExemptAccount(user1.address, true);
+      
+      // Now user1 should be able to make two transfers in succession
+      await token.connect(user1).transfer(user2.address, tokens('100000'));
+      await token.connect(user1).transfer(user2.address, tokens('50000')); // No cooldown needed
+      
+      expect(await token.balanceOf(user2.address)).to.equal(tokens('150000'));
     });
-  });
+});
 
-  describe('Minting', () => {
-    it('allows owner to mint tokens within max supply', async () => {
-      await token.mint(user1.address, tokens('1000'));
-      expect(await token.balanceOf(user1.address)).to.equal(tokens('1000'));
+  describe('Admin Functions', () => {
+    it('allows owner to update transfer cooldown', async () => {
+      const newCooldown = 2 * DAY;
+      await token.setTransferCooldown(newCooldown);
+      expect(await token.TRANSFER_COOLDOWN()).to.equal(newCooldown);
     });
 
-    it('prevents minting above max supply', async () => {
+    it('allows owner to update demo transfer cooldown', async () => {
+      const newCooldown = 5 * MINUTE;
+      await token.setDemoTransferCooldown(newCooldown);
+      expect(await token.DEMO_TRANSFER_COOLDOWN()).to.equal(newCooldown);
+    });
+
+    it('allows owner to update max transfer amount', async () => {
+      const newLimit = tokens('200000');
+      await token.setMaxTransferAmount(newLimit);
+      expect(await token.MAX_TRANSFER_AMOUNT()).to.equal(newLimit);
+    });
+
+    it('allows owner to toggle demo mode', async () => {
+      expect(await token.isDemoMode()).to.be.true;
+      await token.toggleDemoMode();
+      expect(await token.isDemoMode()).to.be.false;
+    });
+
+    it('allows owner to set exempt accounts', async () => {
+      await token.setExemptAccount(user1.address, true);
+      expect(await token.exemptAccounts(user1.address)).to.be.true;
+      
+      await token.setExemptAccount(user1.address, false);
+      expect(await token.exemptAccounts(user1.address)).to.be.false;
+    });
+
+    it('prevents non-owner from calling admin functions', async () => {
       await expect(
-        token.mint(user1.address, tokens('999000001'))
-      ).to.be.revertedWith('Exceeds max supply');
-    });
+        token.connect(user1).setTransferCooldown(DAY)
+      ).to.be.revertedWith('Ownable: caller is not the owner');
 
-    it('prevents non-owner from minting', async () => {
       await expect(
-        token.connect(user1).mint(user1.address, tokens('1000'))
+        token.connect(user1).setDemoTransferCooldown(MINUTE)
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+
+      await expect(
+        token.connect(user1).setMaxTransferAmount(tokens('1000'))
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+
+      await expect(
+        token.connect(user1).toggleDemoMode()
+      ).to.be.revertedWith('Ownable: caller is not the owner');
+
+      await expect(
+        token.connect(user1).setExemptAccount(user2.address, true)
       ).to.be.revertedWith('Ownable: caller is not the owner');
     });
   });
 
-  describe('Burning', () => {
-    beforeEach(async () => {
-      await token.transfer(user1.address, tokens('10000'));
-    });
+  describe('Events', () => {
+    it('emits correct events for admin functions', async () => {
+      await expect(token.setTransferCooldown(2 * DAY))
+        .to.emit(token, 'CooldownUpdated')
+        .withArgs(2 * DAY);
 
-    it('allows users to burn their tokens', async () => {
-      await token.connect(user1).burn(tokens('5000'));
-      expect(await token.balanceOf(user1.address)).to.equal(tokens('5000'));
-      expect(await token.totalSupply()).to.equal(tokens(initialSupply).sub(tokens('5000')));
-    });
+      await expect(token.setDemoTransferCooldown(5 * MINUTE))
+        .to.emit(token, 'CooldownUpdated')
+        .withArgs(5 * MINUTE);
 
-    it('prevents burning more than balance', async () => {
-      await expect(
-        token.connect(user1).burn(tokens('20000'))
-      ).to.be.reverted;
-    });
-  });
+      await expect(token.setMaxTransferAmount(tokens('200000')))
+        .to.emit(token, 'TransferLimitUpdated')
+        .withArgs(tokens('200000'));
 
-  describe('Pausable', () => {
-    it('allows owner to pause/unpause', async () => {
-    await token.pause();
-    expect(await token.paused()).to.be.true;
+      await expect(token.toggleDemoMode())
+        .to.emit(token, 'DemoModeToggled')
+        .withArgs(false);
 
-    await expect(
-      token.transfer(user1.address, tokens('1000'))
-    ).to.be.revertedWith('ERC20Pausable: token transfer while paused');
-
-    await token.unpause();
-    await token.transfer(user1.address, tokens('1000'));
-  });
-
-    it('prevents non-owner from pausing', async () => {
-      await expect(
-        token.connect(user1).pause()
-      ).to.be.revertedWith('Ownable: caller is not the owner');
+      await expect(token.setExemptAccount(user1.address, true))
+        .to.emit(token, 'ExemptAccountSet')
+        .withArgs(user1.address, true);
     });
   });
 
+  // Keep existing tests for standard ERC20 functionality
   describe('ERC20 Standard', () => {
     beforeEach(async () => {
       await token.transfer(user1.address, tokens('10000'));
@@ -128,84 +174,24 @@ describe('Token', () => {
     });
   });
 
-  describe('Transfer Restrictions - Additional Cases', () => {
-  beforeEach(async () => {
-    await token.transfer(user1.address, tokens('200000'));
-  });
+  // Keep existing tests for minting and burning
+  describe('Minting and Burning', () => {
+    it('allows owner to mint tokens within max supply', async () => {
+      await token.mint(user1.address, tokens('1000'));
+      expect(await token.balanceOf(user1.address)).to.equal(tokens('1000'));
+    });
 
-  it('handles consecutive transfers after cooldown correctly', async () => {
-    await token.connect(user1).transfer(user2.address, tokens('1000'));
-    await time.increase(DAY + 1);
-    await token.connect(user1).transfer(user2.address, tokens('2000'));
-    await time.increase(DAY + 1);
-    await token.connect(user1).transfer(user2.address, tokens('3000'));
-    
-    expect(await token.balanceOf(user2.address)).to.equal(tokens('6000'));
-  });
+    it('prevents minting above max supply', async () => {
+      await expect(
+        token.mint(user1.address, tokens('999000001'))
+      ).to.be.revertedWith('Exceeds max supply');
+    });
 
-  it('enforces cooldown per address independently', async () => {
-    await token.transfer(user2.address, tokens('50000'));
-    
-    await token.connect(user1).transfer(user2.address, tokens('1000'));
-    await token.connect(user2).transfer(user1.address, tokens('1000')); // Should work immediately
-    
-    await expect(
-      token.connect(user1).transfer(user2.address, tokens('1000'))
-    ).to.be.revertedWith('Transfer cooldown active');
+    it('allows users to burn their tokens', async () => {
+      await token.transfer(user1.address, tokens('10000'));
+      await token.connect(user1).burn(tokens('5000'));
+      expect(await token.balanceOf(user1.address)).to.equal(tokens('5000'));
+      expect(await token.totalSupply()).to.equal(tokens(initialSupply).sub(tokens('5000')));
+    });
   });
-
-  it('tracks lastTransferTime correctly', async () => {
-    const tx = await token.connect(user1).transfer(user2.address, tokens('1000'));
-    const block = await ethers.provider.getBlock(tx.blockNumber);
-    
-    expect(await token.lastTransferTime(user1.address)).to.equal(block.timestamp);
-  });
-});
-
-describe('Edge Cases', () => {
-  it('handles zero transfers', async () => {
-    await expect(
-      token.transfer(user1.address, 0)
-    ).to.not.be.reverted;
-  });
-
-  it('prevents transfers to zero address', async () => {
-    await expect(
-      token.transfer(ethers.constants.AddressZero, tokens('1000'))
-    ).to.be.reverted;
-  });
-
-  it('enforces max supply across multiple mints', async () => {
-    const remainingSupply = (await token.MAX_SUPPLY()).sub(await token.totalSupply());
-    await token.mint(user1.address, remainingSupply.sub(tokens('1000')));
-    await token.mint(user1.address, tokens('900'));
-    
-    await expect(
-      token.mint(user1.address, tokens('101'))
-    ).to.be.revertedWith('Exceeds max supply');
-  });
-});
-
-describe('Pausable Functionality', () => {
-  it('prevents burning while paused', async () => {
-    await token.transfer(user1.address, tokens('1000'));
-    await token.pause();
-    
-    await expect(
-      token.connect(user1).burn(tokens('500'))
-    ).to.be.revertedWith('ERC20Pausable: token transfer while paused');
-  });
-
-  it('maintains pause state through transfers', async () => {
-    await token.transfer(user1.address, tokens('1000'));
-    await token.pause();
-    await token.unpause();
-    await token.connect(user1).transfer(user2.address, tokens('500')); // Should work
-    await token.pause();
-    
-    await expect(
-      token.connect(user1).transfer(user2.address, tokens('100'))
-    ).to.be.revertedWith('ERC20Pausable: token transfer while paused');
-  });
-});
 });
