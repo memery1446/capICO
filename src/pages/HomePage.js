@@ -62,7 +62,7 @@ class Web3Service {
       const latestBlock = await this.provider.getBlockNumber();
       console.log('Latest block number:', latestBlock);
 
-      const capICOAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3'; // This is usually the address for the first deployed contract in Hardhat
+      const capICOAddress = '0xe7f1725e7734ce288f8367e1bb143e90bb3f0512'; // This is usually the address for the first deployed contract in Hardhat
       console.log('Attempting to initialize CapICO contract at:', capICOAddress);
 
       // Verify contract deployment

@@ -1,289 +1,160 @@
+// src/services/web3Service.js
 import { ethers } from 'ethers';
-
-const HARDHAT_RPC_URL = 'http://127.0.0.1:8545';
-
-const ICOContractABI = [
-  {
-    "inputs": [{"internalType": "uint256", "name": "_amount", "type": "uint256"}],
-    "name": "buyTokens",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "totalRaised",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "softCap",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "hardCap",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "isFinalized",
-    "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "tokenPrice",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "startTime",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "endTime",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
-
-const TokenContractABI = [
-  {
-    "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
-    "name": "balanceOf",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{"internalType": "address", "name": "", "type": "address"}],
-    "name": "lastTransferTime",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "TRANSFER_COOLDOWN",
-    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
+import { CAPICO_ADDRESS, TOKEN_ADDRESS } from '../utils/constants';
+import CapICOContract from '../contracts/CapICO.json';
+import TokenContract from '../contracts/Token.json';
 
 class Web3Service {
   constructor() {
     this.provider = null;
     this.signer = null;
-    this.icoContract = null;
-    this.tokenContract = null;
+    this.contracts = {
+      capICO: null,
+      token: null
+    };
     this.isInitialized = false;
   }
 
   async init() {
-    if (this.isInitialized) {
-      console.log('Web3Service already initialized');
-      return true;
-    }
-
     try {
-      console.log('Initializing Web3Service...');
-      
-      if (window.ethereum) {
-        this.provider = new ethers.providers.Web3Provider(window.ethereum);
+      if (typeof window.ethereum !== 'undefined') {
+        this.provider = new ethers.providers.Web3Provider(window.ethereum, {
+          name: 'localhost',
+          chainId: 31337 // Hardhat's default chain ID
+        });
+
         await this.provider.send("eth_requestAccounts", []);
-      } else {
-        this.provider = new ethers.providers.JsonRpcProvider(HARDHAT_RPC_URL);
+        this.signer = this.provider.getSigner();
+        
+        this.contracts.capICO = new ethers.Contract(CAPICO_ADDRESS, CapICOContract.abi, this.signer);
+        this.contracts.token = new ethers.Contract(TOKEN_ADDRESS, TokenContract.abi, this.signer);
+        
+        this.isInitialized = true;
+        return true;
       }
-      console.log('Provider created');
-
-      const network = await this.provider.getNetwork();
-      console.log('Connected to network:', network);
-
-      this.signer = this.provider.getSigner();
-      const address = await this.signer.getAddress();
-      console.log('Using account:', address);
-
-      const icoContractAddress = '0xe7f1725e7734ce288f8367e1bb143e90bb3f0512';
-      const tokenContractAddress = '0x5fbdb2315678afecb367f032d93f642f64180aa3';
-
-      console.log('Initializing ICO contract at:', icoContractAddress);
-      console.log('Initializing Token contract at:', tokenContractAddress);
-
-      // Verify contract deployments
-      const icoCode = await this.provider.getCode(icoContractAddress);
-      const tokenCode = await this.provider.getCode(tokenContractAddress);
-      if (icoCode === '0x' || tokenCode === '0x') {
-        throw new Error('One or more contracts not deployed at the specified addresses');
-      }
-
-      console.log('Contract code found at the specified addresses');
-
-      this.icoContract = new ethers.Contract(icoContractAddress, ICOContractABI, this.signer);
-      this.tokenContract = new ethers.Contract(tokenContractAddress, TokenContractABI, this.signer);
-      console.log('Contract instances created');
-
-      // Verify contract connections
-      await this.icoContract.totalRaised();
-      await this.tokenContract.balanceOf(address);
-      console.log('Contract connections verified');
-
-      this.isInitialized = true;
-      console.log('Web3Service initialized successfully');
-      return true;
+      return false;
     } catch (error) {
-      console.error('Failed to initialize Web3:', error);
-      this.isInitialized = false;
+      console.error('Initialization error:', error);
       return false;
     }
   }
 
-  async ensureInitialized() {
-    if (!this.isInitialized) {
-      await this.init();
-    }
-    if (!this.isInitialized) {
-      throw new Error('Web3Service is not initialized');
+  async isConnected() {
+    if (!this.provider || !this.signer) return false;
+    try {
+      const accounts = await this.provider.listAccounts();
+      return accounts.length > 0;
+    } catch (error) {
+      return false;
     }
   }
 
   async connect() {
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        return this.init();
-      } catch (error) {
-        console.error('Failed to connect to wallet:', error);
-        return false;
-      }
-    } else {
-      console.error('Ethereum provider not found');
+    if (!this.isInitialized) {
+      return this.init();
+    }
+    try {
+      await this.provider.send("eth_requestAccounts", []);
+      return true;
+    } catch (error) {
+      console.error('Connection error:', error);
       return false;
     }
   }
 
   async disconnect() {
-    this.provider = null;
     this.signer = null;
-    this.icoContract = null;
-    this.tokenContract = null;
-    this.isInitialized = false;
+    return true;
   }
 
-  async isConnected() {
-    return this.isInitialized && this.signer !== null;
-  }
-
-  async getAddress() {
-    if (this.signer) {
-      return await this.signer.getAddress();
-    }
-    return null;
-  }
-
-
-  async buyTokens(amount) {
-    await this.ensureInitialized();
+  async getTransferCooldownTime(address) {
     try {
-      console.log(`Attempting to buy tokens for ${amount} ETH...`);
-      const tokenPrice = await this.icoContract.tokenPrice();
-      const tokenAmount = ethers.utils.parseEther(amount).mul(ethers.constants.WeiPerEther).div(tokenPrice);
-      console.log(`Calculated token amount: ${ethers.utils.formatEther(tokenAmount)} tokens`);
+      const lastTransfer = await this.contracts.token.lastTransferTime(address);
+      const demoTransferCooldown = await this.contracts.token.DEMO_TRANSFER_COOLDOWN();
+      const normalTransferCooldown = await this.contracts.token.TRANSFER_COOLDOWN();
       
-      const tx = await this.icoContract.buyTokens(tokenAmount, {
-        value: ethers.utils.parseEther(amount)
-      });
-      console.log('Transaction sent:', tx.hash);
-      const receipt = await tx.wait();
-      console.log('Transaction confirmed:', receipt.transactionHash);
-      console.log('Token purchase successful');
-    } catch (error) {
-      console.error('Error buying tokens:', error);
-      if (error.reason && error.reason.includes('Transfer cooldown active')) {
-        throw new Error('Transfer cooldown active. Please wait before making another purchase.');
-      } else if (error.reason) {
-        throw new Error(`Failed to buy tokens: ${error.reason}`);
-      } else {
-        throw error;
-      }
-    }
-  }
-
-  async getICOStatus() {
-    try {
-      await this.ensureInitialized();
+      // Use demo cooldown by default for testing
+      const cooldownPeriod = demoTransferCooldown;
       
-      const totalRaised = await this.icoContract.totalRaised();
-      const softCap = await this.icoContract.softCap();
-      const hardCap = await this.icoContract.hardCap();
-      const isFinalized = await this.icoContract.isFinalized();
-      const tokenPrice = await this.icoContract.tokenPrice();
-      const startTime = await this.icoContract.startTime();
-      const endTime = await this.icoContract.endTime();
       const currentTime = Math.floor(Date.now() / 1000);
+      const nextAllowedTransfer = lastTransfer.toNumber() + cooldownPeriod.toNumber();
+      
+      if (nextAllowedTransfer > currentTime) {
+        return nextAllowedTransfer - currentTime;
+      }
+      return 0;
+    } catch (error) {
+      console.error('Error getting cooldown time:', error);
+      return 0;
+    }
+  }
+
+  async getDetailedICOStatus() {
+    try {
+      const [
+        startTime,
+        endTime,
+        totalRaised,
+        softCap,
+        hardCap,
+        tokenPrice,
+        isFinalized
+      ] = await Promise.all([
+        this.contracts.capICO.startTime(),
+        this.contracts.capICO.endTime(),
+        this.contracts.capICO.totalRaised(),
+        this.contracts.capICO.softCap(),
+        this.contracts.capICO.hardCap(),
+        this.contracts.capICO.tokenPrice(),
+        this.contracts.capICO.isFinalized()
+      ]);
+
+      const address = await this.getAddress();
+      const isWhitelisted = await this.contracts.capICO.whitelist(address);
+
+      const now = Math.floor(Date.now() / 1000);
+      const isActive = now >= startTime.toNumber() && 
+                      now <= endTime.toNumber() && 
+                      !isFinalized;
 
       return {
+        startTime: startTime.toNumber(),
+        endTime: endTime.toNumber(),
         totalRaised: ethers.utils.formatEther(totalRaised),
         softCap: ethers.utils.formatEther(softCap),
         hardCap: ethers.utils.formatEther(hardCap),
-        isFinalized,
         tokenPrice: ethers.utils.formatEther(tokenPrice),
-        startTime: startTime.toNumber(),
-        endTime: endTime.toNumber(),
-        currentTime,
-        isActive: currentTime >= startTime.toNumber() && currentTime <= endTime.toNumber(),
-        hasStarted: currentTime >= startTime.toNumber(),
-        hasEnded: currentTime > endTime.toNumber()
+        isFinalized,
+        isActive,
+        isCurrentUserWhitelisted: isWhitelisted
       };
     } catch (error) {
-      console.error('Error getting ICO status:', error);
+      console.error('Error fetching ICO status:', error);
       throw error;
     }
   }
 
   async getTokenBalance(address) {
-    await this.ensureInitialized();
-    try {
-      const balance = await this.tokenContract.balanceOf(address);
-      return ethers.utils.formatEther(balance);
-    } catch (error) {
-      console.error('Error getting token balance:', error);
-      throw error;
-    }
+    const balance = await this.contracts.token.balanceOf(address);
+    return ethers.utils.formatEther(balance);
   }
 
-  async getTransferCooldownTime(address) {
-    await this.ensureInitialized();
-    try {
-      const lastTransferTime = await this.tokenContract.lastTransferTime(address);
-      const cooldownPeriod = await this.tokenContract.TRANSFER_COOLDOWN();
-      const currentTime = Math.floor(Date.now() / 1000);
-      const cooldownEndTime = lastTransferTime.add(cooldownPeriod).toNumber();
-      
-      if (cooldownEndTime > currentTime) {
-        return cooldownEndTime - currentTime;
-      }
-      return 0;
-    } catch (error) {
-      console.error('Error getting transfer cooldown time:', error);
-      throw error;
-    }
+  async getAddress() {
+    if (!this.signer) return null;
+    return await this.signer.getAddress();
+  }
+
+  async isOwner() {
+    const address = await this.getAddress();
+    const owner = await this.contracts.capICO.owner();
+    return address?.toLowerCase() === owner?.toLowerCase();
+  }
+
+  async updateWhitelist(users, status) {
+    const tx = await this.contracts.capICO.updateWhitelist(users, status);
+    return tx.wait();
   }
 }
 
-export default new Web3Service();
-
+const web3Service = new Web3Service();
+export default web3Service;

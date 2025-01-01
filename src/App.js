@@ -2,51 +2,51 @@ import React, { useState, useEffect } from 'react';
 import web3Service from './services/web3Service';
 import BuyTokensForm from './components/ico/BuyTokensForm';
 import WalletConnection from './components/common/WalletConnection';
+import WhitelistManager from './components/admin/WhitelistManager';
+import { Typography, Box, CircularProgress } from '@mui/material';
 
 function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [icoStatus, setIcoStatus] = useState(null);
   const [userBalance, setUserBalance] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
   const [error, setError] = useState(null);
-  const [countdown, setCountdown] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initializeWeb3 = async () => {
+    const initializeApp = async () => {
       try {
         const initialized = await web3Service.init();
         setIsConnected(initialized);
         if (initialized) {
-          await updateICOInfo();
+          await updateAppInfo();
         }
       } catch (err) {
-        console.error('Error initializing web3:', err);
+        console.error('Error initializing app:', err);
         setError(err.message || 'An unknown error occurred while initializing');
+      } finally {
+        setLoading(false);
       }
     };
 
-    initializeWeb3();
-    const interval = setInterval(updateICOInfo, 5000); // Update every 5 seconds
+    initializeApp();
+    const interval = setInterval(updateAppInfo, 15000); // Update every 15 seconds
     return () => clearInterval(interval);
   }, []);
 
-  const updateICOInfo = async () => {
+  const updateAppInfo = async () => {
     try {
-      const status = await web3Service.getICOStatus();
+      const status = await web3Service.getDetailedICOStatus();
       setIcoStatus(status);
-      const address = await web3Service.signer.getAddress();
+      const address = await web3Service.getAddress();
       const balance = await web3Service.getTokenBalance(address);
       setUserBalance(balance);
-
-      if (!status.hasStarted) {
-        const timeLeft = status.startTime - status.currentTime;
-        setCountdown(formatCountdown(timeLeft));
-      } else {
-        setCountdown(null);
-      }
-      setError(null); // Clear any previous errors if successful
+      const ownerStatus = await web3Service.isOwner();
+      setIsOwner(ownerStatus);
+      setError(null);
     } catch (err) {
-      console.error('Error updating ICO info:', err);
-      setError(err.message || 'An error occurred while updating ICO information');
+      console.error('Error updating app info:', err);
+      setError(err.message || 'An error occurred while updating information');
     }
   };
 
@@ -54,49 +54,52 @@ function App() {
     return new Date(timestamp * 1000).toLocaleString();
   };
 
-  const formatCountdown = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  if (loading) {
+    return <CircularProgress />;
+  }
 
   return (
-    <div className="App">
-      <h1>ICO DApp</h1>
+    <Box className="App" p={3}>
+      <Typography variant="h4" gutterBottom>ICO DApp</Typography>
       <WalletConnection isConnected={isConnected} setIsConnected={setIsConnected} />
       {error ? (
-        <div>
-          <p>Error: {error}</p>
-          <button onClick={() => window.location.reload()}>Retry</button>
-        </div>
+        <Typography color="error" mt={2}>{error}</Typography>
       ) : isConnected ? (
-        <div>
-          <p>Connected to Hardhat node</p>
-          <h2>ICO Status</h2>
+        <Box mt={3}>
+          <Typography variant="h5" gutterBottom>ICO Status</Typography>
           {icoStatus ? (
-            <div>
-              <p>Total Raised: {icoStatus.totalRaised} ETH</p>
-              <p>Soft Cap: {icoStatus.softCap} ETH</p>
-              <p>Hard Cap: {icoStatus.hardCap} ETH</p>
-              <p>Token Price: {icoStatus.tokenPrice} ETH</p>
-              <p>Start Time: {formatDate(icoStatus.startTime)}</p>
-              <p>End Time: {formatDate(icoStatus.endTime)}</p>
-              <p>Current Time: {formatDate(icoStatus.currentTime)}</p>
-              {countdown && <p>ICO starts in: {countdown}</p>}
-              <p>ICO Active: {icoStatus.isActive ? 'Yes' : 'No'}</p>
-              <p>Finalized: {icoStatus.isFinalized ? 'Yes' : 'No'}</p>
-            </div>
+            <Box>
+              <Typography>Total Raised: {icoStatus.totalRaised} ETH</Typography>
+              <Typography>Soft Cap: {icoStatus.softCap} ETH</Typography>
+              <Typography>Hard Cap: {icoStatus.hardCap} ETH</Typography>
+              <Typography>Token Price: {icoStatus.tokenPrice} ETH</Typography>
+              <Typography>Start Time: {formatDate(icoStatus.startTime)}</Typography>
+              <Typography>End Time: {formatDate(icoStatus.endTime)}</Typography>
+              <Typography>ICO Active: {icoStatus.isActive ? 'Yes' : 'No'}</Typography>
+              <Typography>Finalized: {icoStatus.isFinalized ? 'Yes' : 'No'}</Typography>
+              <Typography>Your Whitelist Status: {icoStatus.isCurrentUserWhitelisted ? 'Whitelisted' : 'Not Whitelisted'}</Typography>
+            </Box>
           ) : (
-            <p>Loading ICO status...</p>
+            <Typography>Loading ICO status...</Typography>
           )}
-          <h2>Your Information</h2>
-          <p>Your Token Balance: {userBalance || 'Loading...'} Tokens</p>
-          <BuyTokensForm isWalletConnected={isConnected} />
-        </div>
+          <Box mt={3}>
+            <Typography variant="h6" gutterBottom>Your Information</Typography>
+            <Typography>Your Token Balance: {userBalance || 'Loading...'} Tokens</Typography>
+          </Box>
+          <Box mt={3}>
+            <BuyTokensForm isWalletConnected={isConnected} />
+          </Box>
+          {isOwner && (
+            <Box mt={4}>
+              <Typography variant="h5" gutterBottom>Admin Panel</Typography>
+              <WhitelistManager />
+            </Box>
+          )}
+        </Box>
       ) : (
-        <p>Please connect your wallet to interact with the ICO</p>
+        <Typography mt={2}>Please connect your wallet to interact with the ICO</Typography>
       )}
-    </div>
+    </Box>
   );
 }
 
