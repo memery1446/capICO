@@ -11,7 +11,22 @@ const ICOStatus = () => {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
+        // Get raw data from contract for debugging
+        const rawStartTime = await web3Service.contracts.ico.startTime();
+        const rawEndTime = await web3Service.contracts.ico.endTime();
+        
+        console.log('Raw contract times:', {
+          startTimeRaw: rawStartTime.toString(),
+          endTimeRaw: rawEndTime.toString(),
+          startTimeDate: new Date(rawStartTime.toNumber() * 1000).toLocaleString(),
+          endTimeDate: new Date(rawEndTime.toNumber() * 1000).toLocaleString(),
+          currentTime: new Date().toLocaleString(),
+          currentTimestamp: Math.floor(Date.now() / 1000)
+        });
+
         const icoStatus = await web3Service.getICOStatus();
+        console.log('Processed ICO status:', icoStatus);
+        
         setStatus(icoStatus);
         setError(null);
       } catch (err) {
@@ -22,21 +37,7 @@ const ICOStatus = () => {
       }
     };
 
-    const checkWhitelist = async () => {
-      try {
-        const address = await web3Service.getAddress();
-        const isWhitelisted = await web3Service.contracts.ico.whitelist(address);
-        console.log('Whitelist status:', { address, isWhitelisted });
-      } catch (err) {
-        console.error('Error checking whitelist:', err);
-      }
-    };
-
-    // Execute both functions
     fetchStatus();
-    checkWhitelist();
-
-    // Set up interval for status updates
     const interval = setInterval(fetchStatus, 10000);
     return () => clearInterval(interval);
   }, []);
@@ -73,6 +74,9 @@ const ICOStatus = () => {
         </Typography>
         <Typography>
           Time: {new Date(status.startTime * 1000).toLocaleString()} - {new Date(status.endTime * 1000).toLocaleString()}
+        </Typography>
+        <Typography variant="caption" color="textSecondary">
+          Current time: {new Date().toLocaleString()}
         </Typography>
       </CardContent>
     </Card>
