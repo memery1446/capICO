@@ -1,9 +1,10 @@
+
 {
   "abi": [
     {
       "inputs": [
         {
-          "internalType": "contract Token",
+          "internalType": "address",
           "name": "_token",
           "type": "address"
         },
@@ -14,22 +15,7 @@
         },
         {
           "internalType": "uint256",
-          "name": "_softCap",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
           "name": "_hardCap",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_minInvestment",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_maxInvestment",
           "type": "uint256"
         },
         {
@@ -45,69 +31,6 @@
       ],
       "stateMutability": "nonpayable",
       "type": "constructor"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "buyer",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "Buy",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "releaseTime",
-          "type": "uint256"
-        }
-      ],
-      "name": "DistributionScheduled",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "tokensSold",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "ethRaised",
-          "type": "uint256"
-        }
-      ],
-      "name": "Finalize",
-      "type": "event"
     },
     {
       "anonymous": false,
@@ -134,20 +57,7 @@
         {
           "indexed": false,
           "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "Paused",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "user",
+          "name": "buyer",
           "type": "address"
         },
         {
@@ -157,26 +67,7 @@
           "type": "uint256"
         }
       ],
-      "name": "Refunded",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "TokensClaimed",
+      "name": "TokensPurchased",
       "type": "event"
     },
     {
@@ -184,19 +75,6 @@
       "inputs": [
         {
           "indexed": false,
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "Unpaused",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
           "internalType": "address",
           "name": "user",
           "type": "address"
@@ -212,70 +90,10 @@
       "type": "event"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_amount",
-          "type": "uint256"
-        }
-      ],
+      "inputs": [],
       "name": "buyTokens",
       "outputs": [],
       "stateMutability": "payable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "index",
-          "type": "uint256"
-        }
-      ],
-      "name": "claimDistribution",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "claimRefund",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "distributions",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "releaseTime",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bool",
-          "name": "claimed",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -293,72 +111,7 @@
     },
     {
       "inputs": [],
-      "name": "finalize",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "hardCap",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "investments",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "isFinalized",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "maxInvestment",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "minInvestment",
       "outputs": [
         {
           "internalType": "uint256",
@@ -384,42 +137,9 @@
     },
     {
       "inputs": [],
-      "name": "pause",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "paused",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "renounceOwnership",
       "outputs": [],
       "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "softCap",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -440,7 +160,7 @@
       "name": "token",
       "outputs": [
         {
-          "internalType": "contract Token",
+          "internalType": "contract ICOToken",
           "name": "",
           "type": "address"
         }
@@ -475,19 +195,6 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "totalTokensSold",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "address",
@@ -501,8 +208,19 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "unpause",
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_startTime",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_endTime",
+          "type": "uint256"
+        }
+      ],
+      "name": "updateTimes",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -545,14 +263,11 @@
       "type": "function"
     },
     {
-      "stateMutability": "payable",
-      "type": "receive"
+      "inputs": [],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
     }
-  ],
-  "networks": {
-    "1337": {
-      "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3"
-    }
-  }
+  ]
 }
-

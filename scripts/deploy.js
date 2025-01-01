@@ -1,116 +1,77 @@
+// scripts/deploy.js
 const hre = require("hardhat");
+const ethers = hre.ethers;
+const fs = require('fs');
+const path = require('path');
 
 async function main() {
   const [deployer] = await ethers.getSigners();
-  console.log("Deploying contracts with account:", deployer.address);
+  console.log("\nDeploying contracts with account:", deployer.address);
 
   // Deploy Token
-  const Token = await ethers.getContractFactory("Token");
+  console.log("\nDeploying Token...");
+  const Token = await ethers.getContractFactory("ICOToken");
   const token = await Token.deploy(
-    "Portfolio Token",  // name
-    "PFLIO",           // symbol
-    "1000000"          // initial supply (1 million)
+    "Demo Token",    // name
+    "DEMO",         // symbol
+    1000000         // 1 million tokens initial supply
   );
   await token.deployed();
   console.log("Token deployed to:", token.address);
 
-  // Wait for few block confirmations to ensure etherscan picks up the deployment
-  await token.deployTransaction.wait(5);
-
-  // Verify Token contract on Sepolia
-  if (hre.network.name === "sepolia") {
-    await hre.run("verify:verify", {
-      address: token.address,
-      constructorArguments: [
-        "Portfolio Token",
-        "PFLIO",
-        "1000000"
-      ],
-    });
-  }
-
-  // Calculate ICO times (7 days from now for Sepolia, 10 minutes for local)
-  const now = Math.floor(Date.now() / 1000);
-  const isDemoMode = hre.network.name === "localhost" || hre.network.name === "hardhat";
-  const startTime = now + (isDemoMode ? 60 : 3600);          // 1 min or 1 hour delay
-  const duration = isDemoMode ? 10 * 60 : 7 * 24 * 60 * 60;  // 10 mins or 7 days
+  // Get current time for ICO timing
+  const currentTime = Math.floor(Date.now() / 1000);
+  const startTime = currentTime + 60;    // Start in 1 minute
+  const duration = 3600;                 // 1 hour duration
   const endTime = startTime + duration;
 
-  // Set ICO parameters based on network
-  const params = isDemoMode ? {
-    tokenPrice: "0.001",    // 0.001 ETH per token
-    softCap: "0.05",        // 0.05 ETH
-    hardCap: "0.2",         // 0.2 ETH
-    minInvestment: "0.01",  // 0.01 ETH
-    maxInvestment: "0.1",   // 0.1 ETH
-    tokensForICO: "1000"    // 1000 tokens
-  } : {
-    tokenPrice: "0.001",    // 0.001 ETH per token
-    softCap: "10",          // 10 ETH
-    hardCap: "50",          // 50 ETH
-    minInvestment: "0.01",  // 0.01 ETH
-    maxInvestment: "5",     // 5 ETH
-    tokensForICO: "50000"   // 50000 tokens
-  };
-
-  // Deploy CapICO
-  const CapICO = await ethers.getContractFactory("CapICO");
-  const capico = await CapICO.deploy(
-    token.address,
-    ethers.utils.parseEther(params.tokenPrice),
-    ethers.utils.parseEther(params.softCap),
-    ethers.utils.parseEther(params.hardCap),
-    ethers.utils.parseEther(params.minInvestment),
-    ethers.utils.parseEther(params.maxInvestment),
+  // Deploy ICO with reasonable test values
+  console.log("\nDeploying ICO...");
+  const ICO = await ethers.getContractFactory("CapICO");
+  const ico = await ICO.deploy(
+    token.address,                           // token address
+    ethers.utils.parseEther("0.001"),       // token price (0.001 ETH)
+    ethers.utils.parseEther("100"),         // hard cap (100 ETH)
     startTime,
     endTime
   );
-  await capico.deployed();
-  console.log("CapICO deployed to:", capico.address);
+  await ico.deployed();
+  console.log("ICO deployed to:", ico.address);
 
-  // Wait for confirmations if on Sepolia
-  if (hre.network.name === "sepolia") {
-    await capico.deployTransaction.wait(5);
-    
-    // Verify CapICO contract
-    await hre.run("verify:verify", {
-      address: capico.address,
-      constructorArguments: [
-        token.address,
-        ethers.utils.parseEther(params.tokenPrice),
-        ethers.utils.parseEther(params.softCap),
-        ethers.utils.parseEther(params.hardCap),
-        ethers.utils.parseEther(params.minInvestment),
-        ethers.utils.parseEther(params.maxInvestment),
-        startTime,
-        endTime
-      ],
-    });
+  // Transfer tokens to ICO contract
+  console.log("\nSetting up ICO...");
+  const icoTokens = ethers.utils.parseEther("500000"); // 500k tokens for ICO
+  await token.transfer(ico.address, icoTokens);
+  console.log("Transferred", ethers.utils.formatEther(icoTokens), "tokens to ICO contract");
+
+  // Print deployment timestamps
+  console.log("\nICO Timeline:");
+  console.log("Start time:", new Date(startTime * 1000).toLocaleString());
+  console.log("End time:  ", new Date(endTime * 1000).toLocaleString());
+
+  // Verify contract addresses
+  console.log("\nToken supply:", ethers.utils.formatEther(await token.totalSupply()));
+  console.log("ICO token balance:", ethers.utils.formatEther(await token.balanceOf(ico.address)));
+  
+  // Write contract addresses to a file
+  const addresses = {
+    token: token.address,
+    ico: ico.address
+  };
+
+  // Ensure the directory exists
+  const addressDir = path.join(__dirname, '../src/contracts');
+  if (!fs.existsSync(addressDir)) {
+    fs.mkdirSync(addressDir, { recursive: true });
   }
 
-  // Transfer tokens to the ICO contract
-  const transferAmount = ethers.utils.parseEther(params.tokensForICO);
-  await token.transfer(capico.address, transferAmount);
-  console.log("Transferred tokens to CapICO contract");
+  fs.writeFileSync(
+    path.join(addressDir, 'addresses.js'),
+    `export const TOKEN_ADDRESS = "${token.address}";\nexport const ICO_ADDRESS = "${ico.address}";`
+  );
 
-  // Log deployment summary
-  console.log("\nDeployment Summary");
-  console.log("------------------");
-  console.log("Network:", hre.network.name);
-  console.log("Token Address:", token.address);
-  console.log("CapICO Address:", capico.address);
-  console.log("\nTimeline");
-  console.log("ICO Starts:", new Date(startTime * 1000).toLocaleString());
-  console.log("ICO Ends:", new Date(endTime * 1000).toLocaleString());
-  console.log("Duration:", isDemoMode ? "10 minutes" : "7 days");
-  
-  console.log("\nParameters");
-  console.log("Token Price:", params.tokenPrice, "ETH");
-  console.log("Soft Cap:", params.softCap, "ETH");
-  console.log("Hard Cap:", params.hardCap, "ETH");
-  console.log("Min Investment:", params.minInvestment, "ETH");
-  console.log("Max Investment:", params.maxInvestment, "ETH");
-  console.log("Tokens in ICO:", params.tokensForICO);
+  console.log("\nContract addresses have been written to src/contracts/addresses.js");
+  console.log("\nDeployment complete! 🚀");
 }
 
 main()
@@ -119,5 +80,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-
-  
