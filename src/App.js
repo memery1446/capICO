@@ -1,98 +1,73 @@
 // src/App.js
 import React, { useState, useEffect } from 'react';
 import web3Service from './services/web3';
-import { Box, Container, Typography, CircularProgress } from '@mui/material';
-import WalletConnection from './components/WalletConnection';
-import ICOStatus from './components/ICOStatus';
-import BuyTokens from './components/BuyTokens';
 
 function App() {
   const [isConnected, setIsConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [icoStatus, setIcoStatus] = useState(null);
+  const [userBalance, setUserBalance] = useState(null);
   const [error, setError] = useState(null);
-  const [icoData, setIcoData] = useState(null);
-  const [isOwner, setIsOwner] = useState(false);
-  const [userBalance, setUserBalance] = useState('0');
 
-  const updateAppData = async () => {
-    try {
-      const [status, owner, balance] = await Promise.all([
-        web3Service.getICOStatus(),
-        web3Service.isOwner(),
-        web3Service.getTokenBalance(await web3Service.getAddress())
-      ]);
-      
-      setIcoData(status);
-      setIsOwner(owner);
-      setUserBalance(balance);
-      setError(null);
-    } catch (err) {
-      console.error('Error updating app data:', err);
-      setError(err.message);
-    }
-  };
+  useEffect(() => {
+    initializeApp();
+  }, []);
 
   const initializeApp = async () => {
     try {
       const connected = await web3Service.init();
       setIsConnected(connected);
       if (connected) {
-        await updateAppData();
+        await updateStatus();
       }
     } catch (err) {
       console.error('Initialization error:', err);
       setError(err.message);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    initializeApp();
-  }, []);
+  const updateStatus = async () => {
+    try {
+      const status = await web3Service.getICOStatus();
+      setIcoStatus(status);
+      
+      const address = await web3Service.getAddress();
+      const balance = await web3Service.getTokenBalance(address);
+      setUserBalance(balance);
+    } catch (err) {
+      console.error('Error updating status:', err);
+      setError(err.message);
+    }
+  };
 
-  if (isLoading) {
+  const connectWallet = async () => {
+    await initializeApp();
+  };
+
+  if (!isConnected) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
+      <div style={{ padding: 20 }}>
+        <button onClick={connectWallet}>Connect Wallet</button>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="md">
-      <Box py={4}>
-        <Typography variant="h4" gutterBottom align="center">
-          Demo ICO
-        </Typography>
-
-        <WalletConnection 
-          isConnected={isConnected} 
-          onConnect={initializeApp}
-        />
-
-        {error && (
-          <Typography color="error" align="center" my={2}>
-            {error}
-          </Typography>
-        )}
-
-        {isConnected && (
-          <>
-            <ICOStatus 
-              icoData={icoData} 
-              userBalance={userBalance}
-            />
-            
-            <BuyTokens 
-              onPurchase={updateAppData}
-              disabled={!icoData?.isActive}
-            />
-          </>
-        )}
-      </Box>
-    </Container>
+    <div style={{ padding: 20 }}>
+      <h1>ICO Status</h1>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+      
+      {icoStatus && (
+        <div>
+          <p>Total Raised: {icoStatus.totalRaised} ETH</p>
+          <p>Hard Cap: {icoStatus.hardCap} ETH</p>
+          <p>Token Price: {icoStatus.tokenPrice} ETH</p>
+          <p>Active: {icoStatus.isActive ? 'Yes' : 'No'}</p>
+          <p>Your Balance: {userBalance} DEMO</p>
+        </div>
+      )}
+    </div>
   );
 }
 
 export default App;
+
