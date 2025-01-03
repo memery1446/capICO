@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { ICO_ADDRESS } from '../contracts/addresses';
 import CapICO from '../contracts/CapICO.json';
@@ -8,6 +8,28 @@ const BuyTokens = ({ onPurchase }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
+
+  useEffect(() => {
+    const checkCooldown = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
+          const address = await signer.getAddress();
+          const timeLeft = await contract.cooldownTimeLeft(address);
+          setCooldownTimeLeft(timeLeft.toNumber());
+        } catch (error) {
+          console.error('Error checking cooldown:', error);
+        }
+      }
+    };
+
+    checkCooldown();
+    const interval = setInterval(checkCooldown, 1000); // Check every second
+    return () => clearInterval(interval);
+  }, []);
 
   const handleBuy = async (e) => {
     e.preventDefault();
@@ -44,24 +66,28 @@ const BuyTokens = ({ onPurchase }) => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md mt-4">
       <h3 className="text-xl font-bold mb-4">Buy Tokens</h3>
-      <form onSubmit={handleBuy}>
-        <input
-          type="number"
-          step="0.01"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          placeholder="Amount in ETH"
-          className="w-full p-2 border rounded mb-2"
-          required
-        />
-        <button 
-          type="submit" 
-          disabled={isLoading}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
-        >
-          {isLoading ? 'Buying...' : 'Buy Tokens'}
-        </button>
-      </form>
+      {cooldownTimeLeft > 0 ? (
+        <p className="text-yellow-600">Cooldown active. You can buy again in {cooldownTimeLeft} seconds.</p>
+      ) : (
+        <form onSubmit={handleBuy}>
+          <input
+            type="number"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="Amount in ETH"
+            className="w-full p-2 border rounded mb-2"
+            required
+          />
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
+          >
+            {isLoading ? 'Buying...' : 'Buy Tokens'}
+          </button>
+        </form>
+      )}
       {error && <p className="text-red-500 mt-2">{error}</p>}
       {successMessage && <p className="text-green-500 mt-2">{successMessage}</p>}
     </div>

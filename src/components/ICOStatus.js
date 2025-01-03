@@ -6,6 +6,7 @@ import ICOToken from '../contracts/ICOToken.json';
 
 const ICOStatus = () => {
   const [isActive, setIsActive] = useState(false);
+  const [isCooldownEnabled, setIsCooldownEnabled] = useState(false);
   const [totalRaised, setTotalRaised] = useState('0');
   const [tokenBalance, setTokenBalance] = useState('0');
   const [hardCap, setHardCap] = useState('0');
@@ -27,6 +28,7 @@ const ICOStatus = () => {
 
         const [
           active,
+          cooldownEnabled,
           raised,
           cap,
           price,
@@ -38,6 +40,7 @@ const ICOStatus = () => {
           remaining
         ] = await Promise.all([
           icoContract.isActive(),
+          icoContract.cooldownEnabled(),
           icoContract.totalRaised(),
           icoContract.hardCap(),
           icoContract.tokenPrice(),
@@ -50,6 +53,7 @@ const ICOStatus = () => {
         ]);
 
         setIsActive(active);
+        setIsCooldownEnabled(cooldownEnabled);
         setTotalRaised(ethers.utils.formatEther(raised));
         setHardCap(ethers.utils.formatEther(cap));
         setTokenPrice(ethers.utils.formatEther(price));
@@ -88,12 +92,13 @@ const ICOStatus = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <p><span className="font-semibold">Active:</span> {isActive ? 'Yes' : 'No'}</p>
+          <p><span className="font-semibold">Cooldown Enabled:</span> {isCooldownEnabled ? 'Yes' : 'No'}</p>
           <p><span className="font-semibold">Total Raised:</span> {parseFloat(totalRaised).toFixed(4)} ETH</p>
           <p><span className="font-semibold">Hard Cap:</span> {parseFloat(hardCap).toFixed(4)} ETH</p>
           <p><span className="font-semibold">Token Price:</span> {parseFloat(tokenPrice).toFixed(6)} ETH</p>
-          <p><span className="font-semibold">Your Token Balance:</span> {parseFloat(tokenBalance).toFixed(4)} {tokenSymbol}</p>
         </div>
         <div>
+          <p><span className="font-semibold">Your Token Balance:</span> {parseFloat(tokenBalance).toFixed(4)} {tokenSymbol}</p>
           <p><span className="font-semibold">Total Supply:</span> {parseFloat(totalSupply).toFixed(0)} {tokenSymbol}</p>
           <p><span className="font-semibold">Tokens Remaining:</span> {parseFloat(tokensRemaining).toFixed(0)} {tokenSymbol}</p>
           <p><span className="font-semibold">Contract Owner:</span> {`${contractOwner.slice(0, 6)}...${contractOwner.slice(-4)}`}</p>

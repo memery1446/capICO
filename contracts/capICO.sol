@@ -11,14 +11,14 @@ contract CapICO is Ownable {
     uint256 public totalRaised;
     mapping(address => bool) public whitelist;
     bool public isActive = true;
-    uint256 public timeRemaining;
-    bool public useTimeRemaining = false;
+    bool public cooldownEnabled = false;
+    mapping(address => uint256) public lastPurchaseTime;
+    uint256 public constant COOLDOWN_DURATION = 1 hours;
 
     event TokensPurchased(address buyer, uint256 amount);
     event WhitelistUpdated(address user, bool status);
     event ICOStatusUpdated(bool isActive);
-    event TimeRemainingUpdated(uint256 timeRemaining);
-    event UseTimeRemainingUpdated(bool useTimeRemaining);
+    event CooldownToggled(bool enabled);
 
     constructor(
         address _token,
@@ -36,14 +36,9 @@ contract CapICO is Ownable {
         emit ICOStatusUpdated(isActive);
     }
 
-    function setTimeRemaining(uint256 _timeRemaining) external onlyOwner {
-        timeRemaining = _timeRemaining;
-        emit TimeRemainingUpdated(timeRemaining);
-    }
-
-    function toggleUseTimeRemaining() external onlyOwner {
-        useTimeRemaining = !useTimeRemaining;
-        emit UseTimeRemainingUpdated(useTimeRemaining);
+    function toggleCooldown() external onlyOwner {
+        cooldownEnabled = !cooldownEnabled;
+        emit CooldownToggled(cooldownEnabled);
     }
 
     function buyTokens() external payable {
@@ -52,10 +47,15 @@ contract CapICO is Ownable {
         require(msg.value > 0, "Invalid amount");
         require(totalRaised + msg.value <= hardCap, "Hard cap reached");
 
+        if (cooldownEnabled) {
+            require(block.timestamp >= lastPurchaseTime[msg.sender] + COOLDOWN_DURATION, "Cooldown period not over");
+        }
+
         uint256 tokenAmount = (msg.value * 10**18) / tokenPrice;
         totalRaised += msg.value;
 
         require(token.transfer(msg.sender, tokenAmount), "Transfer failed");
+        lastPurchaseTime[msg.sender] = block.timestamp;
         emit TokensPurchased(msg.sender, tokenAmount);
     }
 
@@ -66,19 +66,15 @@ contract CapICO is Ownable {
         }
     }
 
-    function getTimeRemaining() public view returns (uint256) {
-        if (!useTimeRemaining) {
+    function cooldownTimeLeft(address user) external view returns (uint256) {
+        if (!cooldownEnabled) {
             return 0;
         }
-        return timeRemaining > 0 ? timeRemaining : 0;
-    }
-
-    function decreaseTimeRemaining() external {
-        require(useTimeRemaining, "Time remaining is not in use");
-        if (timeRemaining > 0) {
-            timeRemaining--;
-            emit TimeRemainingUpdated(timeRemaining);
+        uint256 timeSinceLastPurchase = block.timestamp - lastPurchaseTime[user];
+        if (timeSinceLastPurchase >= COOLDOWN_DURATION) {
+            return 0;
         }
+        return COOLDOWN_DURATION - timeSinceLastPurchase;
     }
 }
 

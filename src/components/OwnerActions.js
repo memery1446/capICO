@@ -45,6 +45,9 @@ const OwnerActions = ({ onActionComplete }) => {
         case 'updateWhitelist':
           tx = await contract.updateWhitelist(args[0], true);
           break;
+        case 'toggleCooldown':
+          tx = await contract.toggleCooldown();
+          break;
         default:
           throw new Error('Invalid action');
       }
@@ -74,6 +77,13 @@ const OwnerActions = ({ onActionComplete }) => {
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
         >
           Toggle ICO Status
+        </button>
+        <button
+          onClick={() => handleAction('toggleCooldown')}
+          disabled={isLoading}
+          className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 disabled:bg-gray-400"
+        >
+          Toggle Cooldown
         </button>
         <div>
           <input
