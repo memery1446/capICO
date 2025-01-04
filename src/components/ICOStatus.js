@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
 import { useDispatch, useSelector } from 'react-redux';
 import { ICO_ADDRESS, TOKEN_ADDRESS } from '../contracts/addresses';
@@ -10,7 +10,7 @@ const ICOStatus = () => {
   const dispatch = useDispatch();
   const icoState = useSelector((state) => state.ico);
 
-  const fetchICOStatus = async () => {
+  const fetchICOStatus = useCallback(async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -37,7 +37,7 @@ const ICOStatus = () => {
           icoContract.vestingEnabled(),
           icoContract.totalRaised(),
           icoContract.hardCap(),
-          icoContract.getCurrentTokenPrice(),  // Changed from tokenPrice to getCurrentTokenPrice
+          icoContract.getCurrentTokenPrice(),
           tokenContract.name(),
           tokenContract.symbol(),
           icoContract.owner(),
@@ -73,13 +73,13 @@ const ICOStatus = () => {
         }
       }
     }
-  };
+  }, [dispatch]);
 
   useEffect(() => {
     fetchICOStatus();
     const interval = setInterval(fetchICOStatus, 5000); // Refresh every 5 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchICOStatus]);
 
   const progressPercentage = (parseFloat(icoState.totalRaised) / parseFloat(icoState.hardCap)) * 100;
 
@@ -117,5 +117,4 @@ const ICOStatus = () => {
 };
 
 export default ICOStatus;
-
 

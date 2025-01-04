@@ -14,7 +14,6 @@ const OwnerActions = ({ onActionComplete }) => {
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
-    // Fetch initial states from the contract when component mounts
     fetchContractStates();
   }, []);
 
@@ -46,24 +45,29 @@ const OwnerActions = ({ onActionComplete }) => {
       switch (action) {
         case 'toggleActive':
           tx = await contract.toggleActive();
+          await tx.wait();
+          dispatch(setICOStatus(!isActive));
           break;
         case 'toggleCooldown':
           tx = await contract.toggleCooldown();
+          await tx.wait();
+          dispatch(setCooldownStatus(!isCooldownEnabled));
           break;
         case 'toggleVesting':
           tx = await contract.toggleVesting();
+          await tx.wait();
+          dispatch(setVestingStatus(!isVestingEnabled));
           break;
         case 'updateWhitelist':
           setIsWhitelisting(true);
           tx = await contract.updateWhitelist(args[0], true);
+          await tx.wait();
           break;
         default:
           throw new Error('Invalid action');
       }
-      await tx.wait();
       console.log(`${action} transaction completed:`, tx.hash);
       setSuccessMessage(`${action} completed successfully`);
-      fetchContractStates(); // Refresh states after action
       if (onActionComplete) onActionComplete();
     } catch (error) {
       console.error(`Error performing ${action}:`, error);
