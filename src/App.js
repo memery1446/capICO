@@ -9,6 +9,7 @@ import TierInfo from './components/TierInfo';
 import TransactionHistory from './components/TransactionHistory';
 import OwnerActions from './components/OwnerActions';
 import TokenVestingDashboard from './components/TokenVestingDashboard';
+import ReferralSystem from './components/ReferralSystem';
 import { ethers } from 'ethers';
 import { ICO_ADDRESS } from './contracts/addresses';
 import CapICO from './contracts/CapICO.json';
@@ -45,6 +46,7 @@ function App() {
           {isOwner && <OwnerActions onActionComplete={() => {/* Refresh data if needed */}} />}
           <WhitelistStatus />
           <BuyTokens onPurchase={() => {/* Refresh data if needed */}} />
+          <ReferralSystem />
           <TokenVestingDashboard />
           <VestingInfo />
           <TierInfo />

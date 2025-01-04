@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { ethers } from 'ethers';
 import { ICO_ADDRESS } from '../contracts/addresses';
@@ -13,6 +13,28 @@ const OwnerActions = ({ onActionComplete }) => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  useEffect(() => {
+    // Fetch initial states from the contract when component mounts
+    fetchContractStates();
+  }, []);
+
+  const fetchContractStates = async () => {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, provider);
+      const [active, cooldown, vesting] = await Promise.all([
+        contract.isActive(),
+        contract.cooldownEnabled(),
+        contract.vestingEnabled()
+      ]);
+      dispatch(setICOStatus(active));
+      dispatch(setCooldownStatus(cooldown));
+      dispatch(setVestingStatus(vesting));
+    } catch (error) {
+      console.error("Error fetching contract states:", error);
+    }
+  };
+
   const handleAction = async (action, ...args) => {
     setError('');
     setSuccessMessage('');
@@ -24,34 +46,29 @@ const OwnerActions = ({ onActionComplete }) => {
       switch (action) {
         case 'toggleActive':
           tx = await contract.toggleActive();
-          await tx.wait();
-          dispatch(setICOStatus(!isActive));
           break;
         case 'toggleCooldown':
           tx = await contract.toggleCooldown();
-          await tx.wait();
-          dispatch(setCooldownStatus(!isCooldownEnabled));
           break;
         case 'toggleVesting':
           tx = await contract.toggleVesting();
-          await tx.wait();
-          dispatch(setVestingStatus(!isVestingEnabled));
           break;
         case 'updateWhitelist':
           setIsWhitelisting(true);
           tx = await contract.updateWhitelist(args[0], true);
-          await tx.wait();
-          setIsWhitelisting(false);
           break;
         default:
           throw new Error('Invalid action');
       }
+      await tx.wait();
       console.log(`${action} transaction completed:`, tx.hash);
       setSuccessMessage(`${action} completed successfully`);
+      fetchContractStates(); // Refresh states after action
       if (onActionComplete) onActionComplete();
     } catch (error) {
       console.error(`Error performing ${action}:`, error);
       setError(`Failed to perform ${action}. Please try again.`);
+    } finally {
       if (action === 'updateWhitelist') setIsWhitelisting(false);
     }
   };
@@ -64,7 +81,7 @@ const OwnerActions = ({ onActionComplete }) => {
           onClick={() => handleAction('toggleActive')}
           className="btn btn-primary"
         >
-          {isActive ? 'Deactivate' : 'Activate'} ICO
+          {isActive ? 'Pause' : 'Resume'} ICO
         </button>
         <button
           onClick={() => handleAction('toggleCooldown')}

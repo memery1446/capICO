@@ -37,7 +37,7 @@ const ICOStatus = () => {
           icoContract.vestingEnabled(),
           icoContract.totalRaised(),
           icoContract.hardCap(),
-          icoContract.tokenPrice(),
+          icoContract.getCurrentTokenPrice(),  // Changed from tokenPrice to getCurrentTokenPrice
           tokenContract.name(),
           tokenContract.symbol(),
           icoContract.owner(),
@@ -65,6 +65,12 @@ const ICOStatus = () => {
 
       } catch (error) {
         console.error('Error fetching ICO status:', error);
+        if (error.message) {
+          console.error('Error message:', error.message);
+        }
+        if (error.stack) {
+          console.error('Error stack:', error.stack);
+        }
       }
     }
   };
@@ -111,4 +117,5 @@ const ICOStatus = () => {
 };
 
 export default ICOStatus;
+
 

@@ -32,6 +32,10 @@ async function main() {
   await token.transfer(ico.address, icoTokens);
   console.log("Transferred", ethers.utils.formatEther(icoTokens), "tokens to ICO");
 
+  // Whitelist the deployer (owner)
+  await ico.updateWhitelist([deployer.address], true);
+  console.log("Owner address whitelisted:", deployer.address);
+
   // Add a sample tier
   await ico.addTier(
     ethers.utils.parseEther("1"),  // 1 ETH min purchase
@@ -60,3 +64,5 @@ main()
     console.error(error);
     process.exit(1);
   });
+
+  
