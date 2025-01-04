@@ -13,7 +13,7 @@ const formatTime = (seconds) => {
 
 const formatAmount = (value) => {
   const number = parseFloat(value);
-  return isNaN(number) ? "00.00" : number.toFixed(2);
+  return isNaN(number) ? "0.00" : number.toFixed(2);
 };
 
 const BuyTokens = () => {
@@ -23,7 +23,6 @@ const BuyTokens = () => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
-  const [estimatedTokens, setEstimatedTokens] = useState(0);
   const tokenSymbol = useSelector((state) => state.ico.tokenSymbol);
   const tokenPrice = useSelector((state) => state.ico.tokenPrice);
   const dispatch = useDispatch();
@@ -43,23 +42,6 @@ const BuyTokens = () => {
     }
   }, []);
 
-  const estimateTokens = useCallback(async (ethAmount) => {
-    if (typeof window.ethereum !== 'undefined' && ethAmount > 0) {
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, provider);
-        const currentPrice = await contract.getCurrentTokenPrice();
-        const weiAmount = ethers.utils.parseEther(ethAmount.toString());
-        const tokenAmount = await contract.calculateTokenAmount(weiAmount, currentPrice);
-        setEstimatedTokens(ethers.utils.formatEther(tokenAmount));
-      } catch (error) {
-        console.error('Error estimating tokens:', error);
-      }
-    } else {
-      setEstimatedTokens(0);
-    }
-  }, []);
-
   useEffect(() => {
     checkCooldown();
     const interval = setInterval(() => {
@@ -72,10 +54,6 @@ const BuyTokens = () => {
     }, 1000);
     return () => clearInterval(interval);
   }, [checkCooldown]);
-
-  useEffect(() => {
-    estimateTokens(parseFloat(amount));
-  }, [amount, estimateTokens]);
 
   const handleBuy = async (e) => {
     e.preventDefault();
@@ -94,10 +72,7 @@ const BuyTokens = () => {
       const signer = provider.getSigner();
       const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
 
-      if (referrer) {
-        await contract.setReferrer(referrer);
-      }
-
+      // Remove the referrer argument and only pass the value
       const tx = await contract.buyTokens({ value: ethers.utils.parseEther(formatAmount(amount)) });
       await tx.wait();
 
@@ -106,19 +81,19 @@ const BuyTokens = () => {
       setReferrer('');
 
       // Update ICO info after successful purchase
-      const tokenAddress = await contract.token();
-      const tokenContract = new ethers.Contract(tokenAddress, ['function balanceOf(address) view returns (uint256)'], signer);
-      const tokenBalance = await tokenContract.balanceOf(await signer.getAddress());
+      const tokenBalance = await contract.balanceOf(await signer.getAddress());
       dispatch(updateICOInfo({ tokenBalance: tokenBalance.toString() }));
 
       checkCooldown(); // Refresh cooldown time
     } catch (error) {
       console.error('Error buying tokens:', error);
-      setError('Failed to buy tokens. Please ensure you are whitelisted and try again.');
+      setError('Failed to buy tokens. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const estimatedTokens = amount && tokenPrice ? parseFloat(formatAmount(amount)) / parseFloat(tokenPrice) : 0;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -166,7 +141,7 @@ const BuyTokens = () => {
           />
         </div>
         <p className="mb-4">Current token price: {tokenPrice} ETH per {tokenSymbol}</p>
-        <p className="mb-4">Estimated tokens to receive: {parseFloat(estimatedTokens).toFixed(2)} {tokenSymbol}</p>
+        <p className="mb-4">Estimated tokens to receive: {estimatedTokens.toFixed(2)} {tokenSymbol}</p>
         {cooldownTimeLeft > 0 && (
           <p className="mb-4 text-yellow-600">Cooldown period: {formatTime(cooldownTimeLeft)} remaining</p>
         )}
