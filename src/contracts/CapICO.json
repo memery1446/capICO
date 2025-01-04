@@ -3,7 +3,7 @@
     {
       "inputs": [
         {
-          "internalType": "address",
+          "internalType": "contract IERC20",
           "name": "_token",
           "type": "address"
         },
@@ -95,7 +95,7 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
+          "indexed": true,
           "internalType": "address",
           "name": "buyer",
           "type": "address"
@@ -104,6 +104,12 @@
           "indexed": false,
           "internalType": "uint256",
           "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "tokens",
           "type": "uint256"
         }
       ],
@@ -114,7 +120,7 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
+          "indexed": true,
           "internalType": "address",
           "name": "beneficiary",
           "type": "address"
@@ -133,7 +139,7 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
+          "indexed": true,
           "internalType": "address",
           "name": "beneficiary",
           "type": "address"
@@ -184,9 +190,9 @@
       "inputs": [
         {
           "indexed": false,
-          "internalType": "address",
-          "name": "user",
-          "type": "address"
+          "internalType": "address[]",
+          "name": "users",
+          "type": "address[]"
         },
         {
           "indexed": false,
@@ -200,7 +206,33 @@
     },
     {
       "inputs": [],
-      "name": "COOLDOWN_DURATION",
+      "name": "COOLDOWN_PERIOD",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "VESTING_CLIFF",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "VESTING_DURATION",
       "outputs": [
         {
           "internalType": "uint256",
@@ -215,17 +247,17 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "minPurchase",
+          "name": "_minPurchase",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "maxPurchase",
+          "name": "_maxPurchase",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "discount",
+          "name": "_discount",
           "type": "uint256"
         }
       ],
@@ -239,6 +271,25 @@
       "name": "buyTokens",
       "outputs": [],
       "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_weiAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "calculateTokenAmount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -258,7 +309,7 @@
       "inputs": [
         {
           "internalType": "address",
-          "name": "user",
+          "name": "_address",
           "type": "address"
         }
       ],
@@ -277,7 +328,7 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "index",
+          "name": "_index",
           "type": "uint256"
         }
       ],
@@ -493,12 +544,12 @@
       "inputs": [
         {
           "internalType": "address[]",
-          "name": "users",
+          "name": "_addresses",
           "type": "address[]"
         },
         {
           "internalType": "bool",
-          "name": "status",
+          "name": "_status",
           "type": "bool"
         }
       ],
@@ -577,6 +628,17 @@
       ],
       "stateMutability": "view",
       "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "withdrawFunds",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
     }
   ]
 }
