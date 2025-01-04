@@ -17,6 +17,7 @@ const initialState = {
   cooldownTimeLeft: 0,
   tiers: [],
   vestingSchedule: null,
+  transactionHistory: [],
 };
 
 export const icoSlice = createSlice({
@@ -47,6 +48,9 @@ export const icoSlice = createSlice({
     setVestingSchedule: (state, action) => {
       state.vestingSchedule = action.payload;
     },
+    setTransactionHistory: (state, action) => {
+      state.transactionHistory = action.payload;
+    },
   },
 });
 
@@ -59,6 +63,7 @@ export const {
   setCooldownTimeLeft,
   setTiers,
   setVestingSchedule,
+  setTransactionHistory,
 } = icoSlice.actions;
 
 export default icoSlice.reducer;
