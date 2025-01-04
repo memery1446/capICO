@@ -8,6 +8,7 @@ import VestingInfo from './components/VestingInfo';
 import TierInfo from './components/TierInfo';
 import TransactionHistory from './components/TransactionHistory';
 import OwnerActions from './components/OwnerActions';
+import TokenVestingDashboard from './components/TokenVestingDashboard';
 import { ethers } from 'ethers';
 import { ICO_ADDRESS } from './contracts/addresses';
 import CapICO from './contracts/CapICO.json';
@@ -38,12 +39,13 @@ function App() {
   return (
     <Provider store={store}>
       <div style={{ marginLeft: '2rem', maxWidth: '64rem', padding: '2rem 1rem' }}>
-        <h1 className="text-4xl font-bold mb-8 text-center">CapICO Dashboard</h1>
-        <div className="grid gap-6">
+        <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold', marginBottom: '2rem', textAlign: 'center' }}>CapICO Dashboard</h1>
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
           <ICOStatus />
           {isOwner && <OwnerActions onActionComplete={() => {/* Refresh data if needed */}} />}
           <WhitelistStatus />
           <BuyTokens onPurchase={() => {/* Refresh data if needed */}} />
+          <TokenVestingDashboard />
           <VestingInfo />
           <TierInfo />
           <TransactionHistory />

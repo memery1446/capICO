@@ -72,28 +72,32 @@ contract CapICO is Ownable {
         emit VestingToggled(vestingEnabled);
     }
 
-    function buyTokens() external payable {
-        require(isActive, "ICO not active");
-        require(whitelist[msg.sender], "Not whitelisted");
-        require(msg.value > 0, "Invalid amount");
-        require(totalRaised.add(msg.value) <= hardCap, "Hard cap reached");
+function buyTokens() external payable {
+    require(isActive, "ICO not active");
+    require(whitelist[msg.sender], "Not whitelisted");
+    require(msg.value > 0, "Invalid amount");
+    require(totalRaised.add(msg.value) <= hardCap, "Hard cap reached");
 
-        if (cooldownEnabled) {
-            require(block.timestamp >= lastPurchaseTime[msg.sender].add(COOLDOWN_DURATION), "Cooldown period not over");
-        }
-
-        uint256 tokenAmount = calculateTokenAmount(msg.value);
-        totalRaised = totalRaised.add(msg.value);
-
-        if (vestingEnabled) {
-            createVestingSchedule(msg.sender, tokenAmount);
-        } else {
-            require(token.transfer(msg.sender, tokenAmount), "Token transfer failed");
-        }
-
-        lastPurchaseTime[msg.sender] = block.timestamp;
-        emit TokensPurchased(msg.sender, tokenAmount);
+    if (cooldownEnabled) {
+        require(block.timestamp >= lastPurchaseTime[msg.sender].add(COOLDOWN_DURATION), "Cooldown period not over");
     }
+
+    uint256 tokenAmount = calculateTokenAmount(msg.value);
+    totalRaised = totalRaised.add(msg.value);
+
+    if (vestingEnabled) {
+        createVestingSchedule(msg.sender, tokenAmount);
+    } else {
+        require(token.transfer(msg.sender, tokenAmount), "Token transfer failed");
+    }
+
+    lastPurchaseTime[msg.sender] = block.timestamp;
+    emit TokensPurchased(msg.sender, tokenAmount);
+}
+
+
+
+
 
     function calculateTokenAmount(uint256 ethAmount) internal view returns (uint256) {
         uint256 baseAmount = ethAmount.mul(10**18).div(tokenPrice);
@@ -109,21 +113,17 @@ contract CapICO is Ownable {
         return discountedAmount;
     }
 
-    function createVestingSchedule(address beneficiary, uint256 amount) internal {
-        uint256 startTime = block.timestamp;
-        uint256 duration = 365 days; // 1 year vesting period
-        uint256 cliff = 90 days; // 3 months cliff
-
-        vestingSchedules[beneficiary] = VestingSchedule({
-            totalAmount: amount,
-            releasedAmount: 0,
-            startTime: startTime,
-            duration: duration,
-            cliff: cliff
-        });
-
-        emit VestingScheduleCreated(beneficiary, amount, startTime, duration, cliff);
+function createVestingSchedule(address beneficiary, uint256 amount) internal {
+    VestingSchedule storage schedule = vestingSchedules[beneficiary];
+    if (schedule.totalAmount == 0) {
+        schedule.startTime = block.timestamp;
+        schedule.duration = 365 days; // 1 year vesting period
+        schedule.cliff = 90 days; // 3 months cliff
     }
+    schedule.totalAmount = schedule.totalAmount.add(amount);
+
+    emit VestingScheduleCreated(beneficiary, amount, schedule.startTime, schedule.duration, schedule.cliff);
+}
 
     function releaseVestedTokens() external {
         require(vestingEnabled, "Vesting is not enabled");
