@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { ethers } from 'ethers';
+import { useDispatch, useSelector } from 'react-redux';
 import { ICO_ADDRESS } from '../contracts/addresses';
 import CapICO from '../contracts/CapICO.json';
+import { setWhitelistStatus } from '../store/icoSlice';
 
 const WhitelistStatus = () => {
-  const [isWhitelisted, setIsWhitelisted] = useState(false);
-  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  const isWhitelisted = useSelector((state) => state.ico.isWhitelisted);
 
   const checkWhitelistStatus = async () => {
     if (typeof window.ethereum !== 'undefined') {
@@ -16,23 +18,16 @@ const WhitelistStatus = () => {
 
         const address = await signer.getAddress();
         const status = await contract.whitelist(address);
-        setIsWhitelisted(status);
+        dispatch(setWhitelistStatus(status));
       } catch (error) {
         console.error('Error checking whitelist status:', error);
-        setError('Failed to check whitelist status. Please try again.');
       }
-    } else {
-      setError('MetaMask is not installed. Please install it to interact with this dApp.');
     }
   };
 
   useEffect(() => {
     checkWhitelistStatus();
   }, []);
-
-  if (error) {
-    return <div className="text-red-500">{error}</div>;
-  }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md mt-4">

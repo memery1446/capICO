@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import { useDispatch, useSelector } from 'react-redux';
 import { ICO_ADDRESS } from '../contracts/addresses';
 import CapICO from '../contracts/CapICO.json';
+import { setCooldownTimeLeft } from '../store/icoSlice';
 
 const BuyTokens = ({ onPurchase }) => {
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
+  
+  const dispatch = useDispatch();
+  const cooldownTimeLeft = useSelector((state) => state.ico.cooldownTimeLeft);
 
   useEffect(() => {
     const checkCooldown = async () => {
@@ -19,7 +23,7 @@ const BuyTokens = ({ onPurchase }) => {
           const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
           const address = await signer.getAddress();
           const timeLeft = await contract.cooldownTimeLeft(address);
-          setCooldownTimeLeft(timeLeft.toNumber());
+          dispatch(setCooldownTimeLeft(timeLeft.toNumber()));
         } catch (error) {
           console.error('Error checking cooldown:', error);
         }
@@ -29,7 +33,7 @@ const BuyTokens = ({ onPurchase }) => {
     checkCooldown();
     const interval = setInterval(checkCooldown, 1000); // Check every second
     return () => clearInterval(interval);
-  }, []);
+  }, [dispatch]);
 
   const handleBuy = async (e) => {
     e.preventDefault();
@@ -42,22 +46,15 @@ const BuyTokens = ({ onPurchase }) => {
       const signer = provider.getSigner();
       const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
 
-      console.log('Buying tokens...');
-      console.log('Contract address:', ICO_ADDRESS);
-      console.log('Amount:', amount);
-
       const tx = await contract.buyTokens({ value: ethers.utils.parseEther(amount) });
-      console.log('Transaction sent:', tx.hash);
+      await tx.wait();
 
-      const receipt = await tx.wait();
-      console.log('Transaction confirmed:', receipt.transactionHash);
-
-      setSuccessMessage(`Successfully purchased tokens! Transaction hash: ${receipt.transactionHash}`);
+      setSuccessMessage(`Successfully purchased tokens!`);
       setAmount('');
-      if (onPurchase) onPurchase();
+      onPurchase();
     } catch (err) {
-      console.error('Detailed error:', err);
-      setError(`Failed to buy tokens: ${err.message || 'Unknown error'}`);
+      setError('Error purchasing tokens. Please try again.');
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -67,24 +64,28 @@ const BuyTokens = ({ onPurchase }) => {
     <div className="bg-white p-6 rounded-lg shadow-md mt-4">
       <h3 className="text-xl font-bold mb-4">Buy Tokens</h3>
       {cooldownTimeLeft > 0 ? (
-        <p className="text-yellow-600">Cooldown active. You can buy again in {cooldownTimeLeft} seconds.</p>
+        <p>Cooldown period active. Please wait {cooldownTimeLeft} seconds before purchasing again.</p>
       ) : (
         <form onSubmit={handleBuy}>
-          <input
-            type="number"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount in ETH"
-            className="w-full p-2 border rounded mb-2"
-            required
-          />
-          <button 
-            type="submit" 
+          <div className="mb-4">
+            <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
+              Amount (ETH)
+            </label>
+            <input
+              type="number"
+              id="amount"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              required
+            />
+          </div>
+          <button
+            type="submit"
             disabled={isLoading}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
+            className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50"
           >
-            {isLoading ? 'Buying...' : 'Buy Tokens'}
+            {isLoading ? 'Processing...' : 'Buy Tokens'}
           </button>
         </form>
       )}

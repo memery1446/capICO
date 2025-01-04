@@ -1,4 +1,3 @@
-// scripts/deploy.js
 const hre = require("hardhat");
 const ethers = hre.ethers;
 const fs = require('fs');
@@ -13,7 +12,7 @@ async function main() {
   const token = await Token.deploy(
     "Demo Token",
     "DEMO",
-    1000000 // 1 million tokens
+    ethers.utils.parseEther("1000000") // 1 million tokens
   );
   await token.deployed();
   console.log("Token deployed to:", token.address);
@@ -32,6 +31,14 @@ async function main() {
   const icoTokens = ethers.utils.parseEther("500000"); // 500k tokens for ICO
   await token.transfer(ico.address, icoTokens);
   console.log("Transferred", ethers.utils.formatEther(icoTokens), "tokens to ICO");
+
+  // Add a sample tier
+  await ico.addTier(
+    ethers.utils.parseEther("1"),  // 1 ETH min purchase
+    ethers.utils.parseEther("5"),  // 5 ETH max purchase
+    5  // 5% discount
+  );
+  console.log("Added sample tier");
 
   // Write addresses to file
   const addressDir = path.join(__dirname, '../src/contracts');
@@ -53,5 +60,3 @@ main()
     console.error(error);
     process.exit(1);
   });
-
-  

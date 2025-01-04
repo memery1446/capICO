@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { ethers } from 'ethers';
 import { ICO_ADDRESS } from '../contracts/addresses';
 import CapICO from '../contracts/CapICO.json';
+import { setICOStatus, setCooldownStatus, setVestingStatus } from '../store/icoSlice';
 
 const OwnerActions = ({ onActionComplete }) => {
+  const dispatch = useDispatch();
+  const { isActive, isCooldownEnabled, isVestingEnabled } = useSelector(state => state.ico);
   const [isOwner, setIsOwner] = useState(false);
   const [newWhitelistAddresses, setNewWhitelistAddresses] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -41,17 +45,26 @@ const OwnerActions = ({ onActionComplete }) => {
       switch (action) {
         case 'toggleActive':
           tx = await contract.toggleActive();
-          break;
-        case 'updateWhitelist':
-          tx = await contract.updateWhitelist(args[0], true);
+          await tx.wait();
+          dispatch(setICOStatus(!isActive));
           break;
         case 'toggleCooldown':
           tx = await contract.toggleCooldown();
+          await tx.wait();
+          dispatch(setCooldownStatus(!isCooldownEnabled));
+          break;
+        case 'toggleVesting':
+          tx = await contract.toggleVesting();
+          await tx.wait();
+          dispatch(setVestingStatus(!isVestingEnabled));
+          break;
+        case 'updateWhitelist':
+          tx = await contract.updateWhitelist(args[0], true);
+          await tx.wait();
           break;
         default:
           throw new Error('Invalid action');
       }
-      await tx.wait();
       console.log(`${action} transaction completed:`, tx.hash);
       setSuccessMessage(`${action} completed successfully`);
       if (onActionComplete) onActionComplete();
@@ -76,14 +89,21 @@ const OwnerActions = ({ onActionComplete }) => {
           disabled={isLoading}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
         >
-          Toggle ICO Status
+          {isActive ? 'Deactivate' : 'Activate'} ICO
         </button>
         <button
           onClick={() => handleAction('toggleCooldown')}
           disabled={isLoading}
           className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 disabled:bg-gray-400"
         >
-          Toggle Cooldown
+          {isCooldownEnabled ? 'Disable' : 'Enable'} Cooldown
+        </button>
+        <button
+          onClick={() => handleAction('toggleVesting')}
+          disabled={isLoading}
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:bg-gray-400"
+        >
+          {isVestingEnabled ? 'Disable' : 'Enable'} Vesting
         </button>
         <div>
           <input
@@ -96,7 +116,7 @@ const OwnerActions = ({ onActionComplete }) => {
           <button
             onClick={() => handleAction('updateWhitelist', newWhitelistAddresses.split(',').map(addr => addr.trim()))}
             disabled={isLoading}
-            className="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:bg-gray-400"
+            className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 disabled:bg-gray-400"
           >
             Update Whitelist
           </button>

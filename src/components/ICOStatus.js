@@ -1,22 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { ethers } from 'ethers';
+import { useDispatch, useSelector } from 'react-redux';
 import { ICO_ADDRESS, TOKEN_ADDRESS } from '../contracts/addresses';
 import CapICO from '../contracts/CapICO.json';
 import ICOToken from '../contracts/ICOToken.json';
+import { updateICOInfo } from '../store/icoSlice';
 
 const ICOStatus = () => {
-  const [isActive, setIsActive] = useState(false);
-  const [isCooldownEnabled, setIsCooldownEnabled] = useState(false);
-  const [totalRaised, setTotalRaised] = useState('0');
-  const [tokenBalance, setTokenBalance] = useState('0');
-  const [hardCap, setHardCap] = useState('0');
-  const [tokenPrice, setTokenPrice] = useState('0');
-  const [tokenName, setTokenName] = useState('');
-  const [tokenSymbol, setTokenSymbol] = useState('');
-  const [contractOwner, setContractOwner] = useState('');
-  const [totalSupply, setTotalSupply] = useState('0');
-  const [tokensRemaining, setTokensRemaining] = useState('0');
-  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  const icoState = useSelector((state) => state.ico);
 
   const fetchICOStatus = async () => {
     if (typeof window.ethereum !== 'undefined') {
@@ -29,6 +21,7 @@ const ICOStatus = () => {
         const [
           active,
           cooldownEnabled,
+          vestingEnabled,
           raised,
           cap,
           price,
@@ -41,6 +34,7 @@ const ICOStatus = () => {
         ] = await Promise.all([
           icoContract.isActive(),
           icoContract.cooldownEnabled(),
+          icoContract.vestingEnabled(),
           icoContract.totalRaised(),
           icoContract.hardCap(),
           icoContract.tokenPrice(),
@@ -52,25 +46,26 @@ const ICOStatus = () => {
           tokenContract.balanceOf(ICO_ADDRESS)
         ]);
 
-        setIsActive(active);
-        setIsCooldownEnabled(cooldownEnabled);
-        setTotalRaised(ethers.utils.formatEther(raised));
-        setHardCap(ethers.utils.formatEther(cap));
-        setTokenPrice(ethers.utils.formatEther(price));
-        setTokenName(name);
-        setTokenSymbol(symbol);
-        setContractOwner(owner);
         const balance = await tokenContract.balanceOf(address);
-        setTokenBalance(ethers.utils.formatEther(balance));
-        setTotalSupply(ethers.utils.formatEther(supply));
-        setTokensRemaining(ethers.utils.formatEther(remaining));
+
+        dispatch(updateICOInfo({
+          isActive: active,
+          isCooldownEnabled: cooldownEnabled,
+          isVestingEnabled: vestingEnabled,
+          totalRaised: ethers.utils.formatEther(raised),
+          hardCap: ethers.utils.formatEther(cap),
+          tokenPrice: ethers.utils.formatEther(price),
+          tokenName: name,
+          tokenSymbol: symbol,
+          contractOwner: owner,
+          tokenBalance: ethers.utils.formatEther(balance),
+          totalSupply: ethers.utils.formatEther(supply),
+          tokensRemaining: ethers.utils.formatEther(remaining),
+        }));
 
       } catch (error) {
         console.error('Error fetching ICO status:', error);
-        setError('Failed to fetch ICO status. Please check your connection and try again.');
       }
-    } else {
-      setError('MetaMask is not installed. Please install it to interact with this dApp.');
     }
   };
 
@@ -80,35 +75,30 @@ const ICOStatus = () => {
     return () => clearInterval(interval);
   }, []);
 
-  if (error) {
-    return <div className="text-red-500">{error}</div>;
-  }
-
-  const progressPercentage = (parseFloat(totalRaised) / parseFloat(hardCap)) * 100;
+  const progressPercentage = (parseFloat(icoState.totalRaised) / parseFloat(icoState.hardCap)) * 100;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4">{tokenName} ({tokenSymbol}) ICO Status</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <p><span className="font-semibold">Active:</span> {isActive ? 'Yes' : 'No'}</p>
-          <p><span className="font-semibold">Cooldown Enabled:</span> {isCooldownEnabled ? 'Yes' : 'No'}</p>
-          <p><span className="font-semibold">Total Raised:</span> {parseFloat(totalRaised).toFixed(4)} ETH</p>
-          <p><span className="font-semibold">Hard Cap:</span> {parseFloat(hardCap).toFixed(4)} ETH</p>
-          <p><span className="font-semibold">Token Price:</span> {parseFloat(tokenPrice).toFixed(6)} ETH</p>
-        </div>
-        <div>
-          <p><span className="font-semibold">Your Token Balance:</span> {parseFloat(tokenBalance).toFixed(4)} {tokenSymbol}</p>
-          <p><span className="font-semibold">Total Supply:</span> {parseFloat(totalSupply).toFixed(0)} {tokenSymbol}</p>
-          <p><span className="font-semibold">Tokens Remaining:</span> {parseFloat(tokensRemaining).toFixed(0)} {tokenSymbol}</p>
-          <p><span className="font-semibold">Contract Owner:</span> {`${contractOwner.slice(0, 6)}...${contractOwner.slice(-4)}`}</p>
-        </div>
-      </div>
+    <div className="bg-white p-6 rounded-lg shadow-md mt-4">
+      <h2 className="text-2xl font-bold mb-4">ICO Status</h2>
+      <p>Active: {icoState.isActive ? 'Yes' : 'No'}</p>
+      <p>Cooldown Enabled: {icoState.isCooldownEnabled ? 'Yes' : 'No'}</p>
+      <p>Vesting Enabled: {icoState.isVestingEnabled ? 'Yes' : 'No'}</p>
+      <p>Total Raised: {icoState.totalRaised} ETH</p>
+      <p>Hard Cap: {icoState.hardCap} ETH</p>
+      <p>Token Price: {icoState.tokenPrice} ETH</p>
+      <p>Token Name: {icoState.tokenName}</p>
+      <p>Token Symbol: {icoState.tokenSymbol}</p>
+      <p>Your Token Balance: {icoState.tokenBalance} {icoState.tokenSymbol}</p>
+      <p>Total Supply: {icoState.totalSupply} {icoState.tokenSymbol}</p>
+      <p>Tokens Remaining: {icoState.tokensRemaining} {icoState.tokenSymbol}</p>
       <div className="mt-4">
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progressPercentage}%` }}></div>
+        <div className="bg-gray-200 h-4 rounded-full">
+          <div
+            className="bg-blue-500 h-4 rounded-full"
+            style={{ width: `${progressPercentage}%` }}
+          ></div>
         </div>
-        <p className="text-center mt-2"><span className="font-semibold">Progress:</span> {progressPercentage.toFixed(2)}%</p>
+        <p className="text-center mt-2">{progressPercentage.toFixed(2)}% Raised</p>
       </div>
     </div>
   );
