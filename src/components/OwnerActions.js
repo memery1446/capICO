@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { ethers } from 'ethers';
 import { ICO_ADDRESS } from '../contracts/addresses';
@@ -8,33 +8,12 @@ import { setICOStatus, setCooldownStatus, setVestingStatus } from '../store/icoS
 const OwnerActions = ({ onActionComplete }) => {
   const dispatch = useDispatch();
   const { isActive, isCooldownEnabled, isVestingEnabled } = useSelector(state => state.ico);
-  const [isOwner, setIsOwner] = useState(false);
   const [newWhitelistAddresses, setNewWhitelistAddresses] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isWhitelisting, setIsWhitelisting] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  useEffect(() => {
-    checkOwnerStatus();
-  }, []);
-
-  const checkOwnerStatus = async () => {
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
-        const owner = await contract.owner();
-        const currentAddress = await signer.getAddress();
-        setIsOwner(owner.toLowerCase() === currentAddress.toLowerCase());
-      } catch (error) {
-        console.error('Error checking owner status:', error);
-      }
-    }
-  };
-
   const handleAction = async (action, ...args) => {
-    setIsLoading(true);
     setError('');
     setSuccessMessage('');
     try {
@@ -59,8 +38,10 @@ const OwnerActions = ({ onActionComplete }) => {
           dispatch(setVestingStatus(!isVestingEnabled));
           break;
         case 'updateWhitelist':
+          setIsWhitelisting(true);
           tx = await contract.updateWhitelist(args[0], true);
           await tx.wait();
+          setIsWhitelisting(false);
           break;
         default:
           throw new Error('Invalid action');
@@ -71,37 +52,29 @@ const OwnerActions = ({ onActionComplete }) => {
     } catch (error) {
       console.error(`Error performing ${action}:`, error);
       setError(`Failed to perform ${action}. Please try again.`);
-    } finally {
-      setIsLoading(false);
+      if (action === 'updateWhitelist') setIsWhitelisting(false);
     }
   };
 
-  if (!isOwner) {
-    return null;
-  }
-
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mt-4">
+    <div className="bg-white p-6 rounded-lg shadow-md">
       <h3 className="text-xl font-bold mb-4">Owner Actions</h3>
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <button
           onClick={() => handleAction('toggleActive')}
-          disabled={isLoading}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
+          className="btn btn-primary"
         >
           {isActive ? 'Deactivate' : 'Activate'} ICO
         </button>
         <button
           onClick={() => handleAction('toggleCooldown')}
-          disabled={isLoading}
-          className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 disabled:bg-gray-400"
+          className="btn btn-secondary"
         >
           {isCooldownEnabled ? 'Disable' : 'Enable'} Cooldown
         </button>
         <button
           onClick={() => handleAction('toggleVesting')}
-          disabled={isLoading}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:bg-gray-400"
+          className="btn btn-info"
         >
           {isVestingEnabled ? 'Disable' : 'Enable'} Vesting
         </button>
@@ -111,19 +84,19 @@ const OwnerActions = ({ onActionComplete }) => {
             value={newWhitelistAddresses}
             onChange={(e) => setNewWhitelistAddresses(e.target.value)}
             placeholder="Enter addresses to whitelist (comma-separated)"
-            className="w-full p-2 border rounded"
+            className="form-control mb-2"
           />
           <button
             onClick={() => handleAction('updateWhitelist', newWhitelistAddresses.split(',').map(addr => addr.trim()))}
-            disabled={isLoading}
-            className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 disabled:bg-gray-400"
+            disabled={isWhitelisting}
+            className="btn btn-warning"
           >
-            Update Whitelist
+            {isWhitelisting ? 'Whitelisting...' : 'Whitelist Addresses'}
           </button>
         </div>
       </div>
-      {error && <p className="text-red-500 mt-2">{error}</p>}
-      {successMessage && <p className="text-green-500 mt-2">{successMessage}</p>}
+      {error && <p className="text-danger mt-2">{error}</p>}
+      {successMessage && <p className="text-success mt-2">{successMessage}</p>}
     </div>
   );
 };

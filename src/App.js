@@ -37,15 +37,17 @@ function App() {
 
   return (
     <Provider store={store}>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8">CapICO Dashboard</h1>
-        <ICOStatus />
-        {isOwner && <OwnerActions onActionComplete={() => {/* Refresh data if needed */}} />}
-        <WhitelistStatus />
-        <BuyTokens onPurchase={() => {/* Refresh data if needed */}} />
-        <VestingInfo />
-        <TierInfo />
-        <TransactionHistory />
+      <div style={{ marginLeft: '2rem', maxWidth: '64rem', padding: '2rem 1rem' }}>
+        <h1 className="text-4xl font-bold mb-8 text-center">CapICO Dashboard</h1>
+        <div className="grid gap-6">
+          <ICOStatus />
+          {isOwner && <OwnerActions onActionComplete={() => {/* Refresh data if needed */}} />}
+          <WhitelistStatus />
+          <BuyTokens onPurchase={() => {/* Refresh data if needed */}} />
+          <VestingInfo />
+          <TierInfo />
+          <TransactionHistory />
+        </div>
       </div>
     </Provider>
   );

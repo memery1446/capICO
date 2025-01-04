@@ -107,7 +107,7 @@ const BuyTokens = ({ onPurchase }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mt-4">
+    <div className="bg-white p-6 rounded-lg shadow-md">
       <h3 className="text-xl font-bold mb-4">Buy Tokens</h3>
       {isCooldownEnabled ? (
         countdown ? (

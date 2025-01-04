@@ -78,19 +78,25 @@ const ICOStatus = () => {
   const progressPercentage = (parseFloat(icoState.totalRaised) / parseFloat(icoState.hardCap)) * 100;
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md mt-4">
+    <div className="bg-white p-6 rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-4">ICO Status</h2>
-      <p>Active: {icoState.isActive ? 'Yes' : 'No'}</p>
-      <p>Cooldown Enabled: {icoState.isCooldownEnabled ? 'Yes' : 'No'}</p>
-      <p>Vesting Enabled: {icoState.isVestingEnabled ? 'Yes' : 'No'}</p>
-      <p>Total Raised: {icoState.totalRaised} ETH</p>
-      <p>Hard Cap: {icoState.hardCap} ETH</p>
-      <p>Token Price: {icoState.tokenPrice} ETH</p>
-      <p>Token Name: {icoState.tokenName}</p>
-      <p>Token Symbol: {icoState.tokenSymbol}</p>
-      <p>Your Token Balance: {icoState.tokenBalance} {icoState.tokenSymbol}</p>
-      <p>Total Supply: {icoState.totalSupply} {icoState.tokenSymbol}</p>
-      <p>Tokens Remaining: {icoState.tokensRemaining} {icoState.tokenSymbol}</p>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <p><strong>Active:</strong> {icoState.isActive ? 'Yes' : 'No'}</p>
+          <p><strong>Cooldown Enabled:</strong> {icoState.isCooldownEnabled ? 'Yes' : 'No'}</p>
+          <p><strong>Vesting Enabled:</strong> {icoState.isVestingEnabled ? 'Yes' : 'No'}</p>
+          <p><strong>Total Raised:</strong> {icoState.totalRaised} ETH</p>
+          <p><strong>Hard Cap:</strong> {icoState.hardCap} ETH</p>
+          <p><strong>Token Price:</strong> {icoState.tokenPrice} ETH</p>
+        </div>
+        <div>
+          <p><strong>Token Name:</strong> {icoState.tokenName}</p>
+          <p><strong>Token Symbol:</strong> {icoState.tokenSymbol}</p>
+          <p><strong>Your Token Balance:</strong> {icoState.tokenBalance} {icoState.tokenSymbol}</p>
+          <p><strong>Total Supply:</strong> {icoState.totalSupply} {icoState.tokenSymbol}</p>
+          <p><strong>Tokens Remaining:</strong> {icoState.tokensRemaining} {icoState.tokenSymbol}</p>
+        </div>
+      </div>
       <div className="mt-4">
         <div className="bg-gray-200 h-4 rounded-full">
           <div
