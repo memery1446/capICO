@@ -18,6 +18,10 @@ const initialState = {
   tiers: [],
   vestingSchedule: null,
   transactionHistory: [],
+  referralBonus: '0',
+  lockedTokens: '0',
+  currentTokenPrice: '0',
+  estimatedTokens: '0',
 };
 
 export const icoSlice = createSlice({
@@ -51,6 +55,25 @@ export const icoSlice = createSlice({
     setTransactionHistory: (state, action) => {
       state.transactionHistory = action.payload;
     },
+    updateTokenBalance: (state, action) => {
+      if (typeof action.payload === 'function') {
+        state.tokenBalance = action.payload(state.tokenBalance);
+      } else {
+        state.tokenBalance = action.payload;
+      }
+    },
+    setReferralBonus: (state, action) => {
+      state.referralBonus = action.payload;
+    },
+    setLockedTokens: (state, action) => {
+      state.lockedTokens = action.payload;
+    },
+    setCurrentTokenPrice: (state, action) => {
+      state.currentTokenPrice = action.payload;
+    },
+    setEstimatedTokens: (state, action) => {
+      state.estimatedTokens = action.payload;
+    },
   },
 });
 
@@ -64,6 +87,11 @@ export const {
   setTiers,
   setVestingSchedule,
   setTransactionHistory,
+  updateTokenBalance,
+  setReferralBonus,
+  setLockedTokens,
+  setCurrentTokenPrice,
+  setEstimatedTokens,
 } = icoSlice.actions;
 
 export default icoSlice.reducer;

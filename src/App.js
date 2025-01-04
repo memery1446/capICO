@@ -5,6 +5,7 @@ import ICOStatus from './components/ICOStatus';
 import WhitelistStatus from './components/WhitelistStatus';
 import BuyTokens from './components/BuyTokens';
 import TokenVestingDashboard from './components/TokenVestingDashboard';
+import ReferralSystem from './components/ReferralSystem';
 import TierInfo from './components/TierInfo';
 import TransactionHistory from './components/TransactionHistory';
 import OwnerActions from './components/OwnerActions';
@@ -37,15 +38,16 @@ function App() {
 
   return (
     <Provider store={store}>
-      <div style={{ marginLeft: '2rem', maxWidth: '64rem', padding: '2rem 1rem' }}>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold', marginBottom: '2rem', textAlign: 'center' }}>CapICO Dashboard</h1>
-        <div style={{ display: 'grid', gap: '1.5rem' }}>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-4xl font-bold mb-8 text-center">CapICO Dashboard</h1>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <ICOStatus />
-          {isOwner && <OwnerActions onActionComplete={() => {/* Refresh data if needed */}} />}
+          {isOwner && <OwnerActions />}
           <WhitelistStatus />
-          <BuyTokens onPurchase={() => {/* Refresh data if needed */}} />
+          <BuyTokens />
           <TierInfo />
           <TokenVestingDashboard />
+          <ReferralSystem />
           <TransactionHistory />
         </div>
       </div>
