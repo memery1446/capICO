@@ -7,6 +7,7 @@
     "@emotion/styled": "^11.11.0",
     "@mui/material": "^5.14.11",
     "@reduxjs/toolkit": "^1.9.7",
+    "ethers": "^5.7.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-redux": "^8.1.3",
@@ -17,17 +18,27 @@
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-waffle": "^2.0.6",
     "@openzeppelin/contracts": "^4.9.3",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.4.3",
     "chai": "^4.3.7",
     "chai-as-promised": "^7.1.1",
     "ethereum-waffle": "^3.4.4",
-    "ethers": "^5.7.2",
-    "hardhat": "^2.17.3"
+    "hardhat": "^2.17.3",
+    "jest": "^27.5.1",
+    "redux-mock-store": "^1.5.4"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "hardhat test",
+    "test": "react-scripts test",
+    "test:contracts": "hardhat test",
     "eject": "react-scripts eject"
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    }
   },
   "browserslist": {
     "production": [
@@ -42,4 +53,3 @@
     ]
   }
 }
-
