@@ -72,12 +72,11 @@ const BuyTokens = () => {
       const signer = provider.getSigner();
       const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
 
-      // Remove the referrer argument and only pass the value
       const tx = await contract.buyTokens({ value: ethers.utils.parseEther(formatAmount(amount)) });
       await tx.wait();
 
       setSuccessMessage(`Successfully purchased tokens!`);
-      setAmount('');
+      setAmount(''); // Clear the input after successful purchase
       setReferrer('');
 
       // Update ICO info after successful purchase
