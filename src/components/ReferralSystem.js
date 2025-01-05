@@ -5,9 +5,17 @@ import { setReferralBonus, setCurrentReferrer } from '../store/referralSlice';
 import { ICO_ADDRESS } from '../contracts/addresses';
 import CapICO from '../contracts/CapICO.json';
 
+const SUPPORTED_NETWORKS = {
+  1: 'Ethereum Mainnet',
+  31337: 'Hardhat Network',
+  1337: 'Local Ganache',
+  // Add more networks as needed
+};
+
 const ReferralSystem = () => {
   const [newReferrer, setNewReferrer] = useState('');
   const [error, setError] = useState('');
+  const [networkName, setNetworkName] = useState('');
   const dispatch = useDispatch();
   const { isWalletConnected, referralBonus, currentReferrer } = useSelector((state) => state.referral);
   const { tokenSymbol } = useSelector((state) => state.ico);
@@ -19,9 +27,13 @@ const ReferralSystem = () => {
         
         // Check if the network is supported
         const network = await provider.getNetwork();
-        if (network.chainId !== 1) { // Assuming we're using Ethereum mainnet
-          throw new Error('Unsupported network. Please switch to Ethereum mainnet.');
+        console.log('Current network chainId:', network.chainId);
+        
+        if (!SUPPORTED_NETWORKS[network.chainId]) {
+          throw new Error(`Unsupported network (chainId: ${network.chainId}). Please switch to a supported network.`);
         }
+
+        setNetworkName(SUPPORTED_NETWORKS[network.chainId]);
 
         const signer = provider.getSigner();
         const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
