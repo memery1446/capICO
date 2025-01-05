@@ -11,6 +11,7 @@ const mockStore = configureStore([thunk]);
 
 describe('WalletConnection', () => {
   let store;
+  let consoleErrorSpy;
 
   beforeEach(() => {
     store = mockStore({
@@ -24,6 +25,12 @@ describe('WalletConnection', () => {
       on: jest.fn(),
       removeListener: jest.fn(),
     };
+
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   it('renders connect wallet button when not connected', async () => {
@@ -71,6 +78,48 @@ describe('WalletConnection', () => {
     });
 
     expect(screen.getByText('Disconnect')).toBeInTheDocument();
+  });
+
+  it('handles wallet connection failure', async () => {
+    global.window.ethereum.request.mockRejectedValueOnce(new Error('User rejected the request'));
+
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <WalletConnection />
+        </Provider>
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Connect Wallet'));
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error connecting wallet:', expect.any(Error));
+    expect(store.getActions()).not.toContainEqual(setWalletConnection(true));
+  });
+
+  it('dispatches setWalletConnection action when Disconnect is clicked', async () => {
+    store = mockStore({
+      referral: {
+        isWalletConnected: true,
+      },
+    });
+
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <WalletConnection />
+        </Provider>
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Disconnect'));
+    });
+
+    const actions = store.getActions();
+    expect(actions).toContainEqual(setWalletConnection(false));
   });
 });
 
