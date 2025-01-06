@@ -2,13 +2,10 @@ import '@testing-library/jest-dom';
 import { configure } from '@testing-library/react';
 import * as React from 'react';
 
-// Override the default act from @testing-library/react
 configure({ asyncUtilTimeout: 5000 });
 
-// Explicitly set the global act to use React.act
 global.act = React.act;
 
-// Mock ethers
 jest.mock('ethers', () => {
   const original = jest.requireActual('ethers');
   return {
@@ -18,7 +15,11 @@ jest.mock('ethers', () => {
           getNetwork: jest.fn().mockResolvedValue({ chainId: 1, name: 'mainnet' }),
           getSigner: jest.fn(() => ({
             getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
+            signMessage: jest.fn().mockResolvedValue('0xmockedsignature'),
           })),
+          getBalance: jest.fn().mockResolvedValue(original.BigNumber.from('1000000000000000000')),
+          on: jest.fn(),
+          removeListener: jest.fn(),
         })),
       },
       Contract: jest.fn(() => ({
@@ -31,6 +32,10 @@ jest.mock('ethers', () => {
           ];
           return Promise.resolve(tiers[index]);
         }),
+        isActive: jest.fn().mockResolvedValue(true),
+        totalRaised: jest.fn().mockResolvedValue(original.BigNumber.from('1000000000000000000000')),
+        hardCap: jest.fn().mockResolvedValue(original.BigNumber.from('10000000000000000000000')),
+        tokenPrice: jest.fn().mockResolvedValue(original.BigNumber.from('100000000000000000')),
       })),
       utils: {
         formatEther: jest.fn(val => original.utils.formatEther(val)),
@@ -39,7 +44,6 @@ jest.mock('ethers', () => {
   };
 });
 
-// Suppress specific console warnings
 const originalError = console.error;
 console.error = (...args) => {
   if (args[0].includes('Warning: ReactDOM.render is no longer supported in React 18')) {
@@ -60,20 +64,22 @@ console.error = (...args) => {
   if (args[0].includes('Error fetching tiers:')) {
     return;
   }
+  if (args[0].includes('Error fetching contract state:')) {
+    return;
+  }
+  if (args[0].includes('Error fetching ICO status:')) {
+    return;
+  }
+  if (args[0].includes('Error fetching vesting and lockup info:')) {
+    return;
+  }
   originalError.apply(console, args);
 };
 
-// Mock window.ethereum
 global.window.ethereum = {
   request: jest.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
   isMetaMask: true,
+  on: jest.fn(),
+  removeListener: jest.fn(),
 };
-
-// Mock the Web3Provider globally
-global.Web3Provider = jest.fn(() => ({
-  getNetwork: jest.fn().mockResolvedValue({ chainId: 1, name: 'mainnet' }),
-  getSigner: jest.fn(() => ({
-    getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
-  })),
-}));
 
