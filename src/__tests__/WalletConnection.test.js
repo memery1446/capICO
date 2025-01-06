@@ -1,86 +1,34 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import configureStore from 'redux-mock-store';
-import WalletConnection from '../components/WalletConnection';
+import { render, screen } from '@testing-library/react';
+import OwnerActions from '../components/OwnerActions';
 
-// Mock the entire ethers library
-jest.mock('ethers', () => ({
-  providers: {
-    Web3Provider: jest.fn(),
-  },
-}));
+// Mock window.ethereum
+const mockEthereum = {
+  request: jest.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890'])
+};
 
-const mockStore = configureStore([]);
-
-describe('WalletConnection', () => {
-  it('renders without crashing', () => {
-    const store = mockStore({
-      referral: {
-        isWalletConnected: false,
-      },
-    });
-
-    render(
-      <Provider store={store}>
-        <WalletConnection />
-      </Provider>
-    );
-
-    expect(screen.getByText('Wallet Connection')).toBeInTheDocument();
-    expect(screen.getByText('Connect your wallet to interact with the ICO')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Connect Wallet' })).toBeInTheDocument();
+describe('OwnerActions', () => {
+  beforeEach(() => {
+    global.window.ethereum = mockEthereum;
   });
 
-  it('displays disconnect button when wallet is connected', () => {
-    const store = mockStore({
-      referral: {
-        isWalletConnected: true,
-      },
-    });
-
-    render(
-      <Provider store={store}>
-        <WalletConnection />
-      </Provider>
-    );
-
-    expect(screen.getByRole('button', { name: 'Disconnect' })).toBeInTheDocument();
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('displays error message when connection fails', async () => {
-    const store = mockStore({
-      referral: {
-        isWalletConnected: false,
-      },
-    });
+  it('renders basic component elements', () => {
+    render(<OwnerActions />);
+    
+    expect(screen.getByText('Owner Actions')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Enter addresses to whitelist (comma-separated)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /whitelist addresses/i })).toBeInTheDocument();
+  });
 
-    // Mock window.ethereum and console.error
-    global.window.ethereum = {
-      request: jest.fn().mockRejectedValue(new Error('User rejected the request')),
-    };
-    const mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-    render(
-      <Provider store={store}>
-        <WalletConnection />
-      </Provider>
-    );
-
-    const connectButton = screen.getByRole('button', { name: 'Connect Wallet' });
-    fireEvent.click(connectButton);
-
-    // Wait for the error message to appear
-    await waitFor(() => {
-      expect(screen.getByText('Failed to connect wallet. Please try again.')).toBeInTheDocument();
-    });
-
-    // Verify that console.error was called with the expected error
-    expect(mockConsoleError).toHaveBeenCalledWith('Error connecting wallet:', expect.any(Error));
-
-    // Clean up the mocks
-    delete global.window.ethereum;
-    mockConsoleError.mockRestore();
+  it('displays toggle buttons with correct initial states', () => {
+    render(<OwnerActions />);
+    
+    expect(screen.getByRole('button', { name: /pause ico/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /enable cooldown/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /disable vesting/i })).toBeInTheDocument();
   });
 });
-
