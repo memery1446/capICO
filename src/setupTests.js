@@ -20,6 +20,12 @@ console.error = (...args) => {
   if (args[0].includes('Warning: `ReactDOMTestUtils.act` is deprecated')) {
     return;
   }
+    if (args[0].includes('Error fetching transaction history:')) {
+    return;
+  }
+  if (args[0].includes('Error checking whitelist status:')) {
+    return;
+  }
   originalError.apply(console, args);
 };
 
