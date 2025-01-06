@@ -14,39 +14,42 @@ const TierInfo = () => {
 
   useEffect(() => {
     const fetchTiers = async () => {
-      if (typeof window.ethereum !== 'undefined') {
-        try {
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, provider);
-          const signer = provider.getSigner();
-          const address = await signer.getAddress();
+      if (typeof window.ethereum === 'undefined') {
+        console.error('Ethereum provider not found');
+        return;
+      }
 
-          const tierCount = await contract.getTierCount();
-          const fetchedTiers = [];
-          for (let i = 0; i < tierCount; i++) {
-            const tier = await contract.getTier(i);
-            fetchedTiers.push({
-              minPurchase: ethers.utils.formatEther(tier[0]),
-              maxPurchase: ethers.utils.formatEther(tier[1]),
-              discount: tier[2].toNumber(),
-            });
-          }
-          setTiers(fetchedTiers);
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.getNetwork(); // This ensures the provider is ready
+        const signer = provider.getSigner();
+        const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
 
-          // Calculate user's investment based on token balance and current price
-          const investment = parseFloat(tokenBalance) * parseFloat(tokenPrice);
-          setUserInvestment(investment.toFixed(4));
-
-          // Determine current tier
-          const currentTierIndex = fetchedTiers.findIndex(
-            (tier, index) => 
-              investment >= parseFloat(tier.minPurchase) && 
-              (index === fetchedTiers.length - 1 || investment < parseFloat(fetchedTiers[index + 1].minPurchase))
-          );
-          setCurrentTier(currentTierIndex);
-        } catch (error) {
-          console.error('Error fetching tiers:', error);
+        const tierCount = await contract.getTierCount();
+        const fetchedTiers = [];
+        for (let i = 0; i < tierCount; i++) {
+          const tier = await contract.getTier(i);
+          fetchedTiers.push({
+            minPurchase: ethers.utils.formatEther(tier[0]),
+            maxPurchase: ethers.utils.formatEther(tier[1]),
+            discount: tier[2].toNumber(),
+          });
         }
+        setTiers(fetchedTiers);
+
+        // Calculate user's investment based on token balance and current price
+        const investment = parseFloat(tokenBalance) * parseFloat(tokenPrice);
+        setUserInvestment(investment.toFixed(4));
+
+        // Determine current tier
+        const currentTierIndex = fetchedTiers.findIndex(
+          (tier, index) => 
+            investment >= parseFloat(tier.minPurchase) && 
+            (index === fetchedTiers.length - 1 || investment < parseFloat(fetchedTiers[index + 1].minPurchase))
+        );
+        setCurrentTier(currentTierIndex);
+      } catch (error) {
+        console.error('Error fetching tiers:', error.message);
       }
     };
 
