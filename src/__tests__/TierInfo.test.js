@@ -196,5 +196,32 @@ describe('TierInfo', () => {
 
     expect(screen.getByTestId('next-tier-requirement')).toHaveTextContent('Next tier requirement: Max tier reached');
   });
+
+  it('displays appropriate message when no tiers are available', async () => {
+    const mockGetTiers = jest.fn().mockResolvedValue([]);
+
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <TierInfo getTiers={mockGetTiers} />
+        </Provider>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Investment Tiers')).toBeInTheDocument();
+    expect(screen.getByTestId('user-investment')).toHaveTextContent('Your estimated total investment: 100.0000 ETH');
+    
+    // Check that the table is present but empty
+    const table = screen.getByRole('table');
+    expect(table).toBeInTheDocument();
+    expect(table.querySelector('tbody')).toBeEmptyDOMElement();
+    
+    expect(screen.getByTestId('current-tier')).toHaveTextContent('Your current tier: 0');
+    expect(screen.getByTestId('next-tier-requirement')).toHaveTextContent('Next tier requirement: Max tier reached');
+  });
 });
 
