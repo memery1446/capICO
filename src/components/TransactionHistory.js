@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const mockTransactions = [
   { id: 1, amount: 100, date: '2023-01-01 12:00:00' },
@@ -9,8 +9,16 @@ const mockTransactions = [
 const TransactionHistory = () => {
   const [transactions, setTransactions] = useState([]);
   const [sortOrder, setSortOrder] = useState('desc');
+  const [filterAmount, setFilterAmount] = useState('');
+
+  useEffect(() => {
+    if (transactions.length > 0) {
+      applyFilterAndSort();
+    }
+  }, [filterAmount, sortOrder, transactions.length]);
 
   const handleRefresh = () => {
+    setFilterAmount('');
     if (transactions.length) {
       setTransactions([]);
     } else {
@@ -19,13 +27,29 @@ const TransactionHistory = () => {
   };
 
   const handleSort = () => {
-    const newSortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
-    setSortOrder(newSortOrder);
-    setTransactions([...transactions].sort((a, b) => {
-      return newSortOrder === 'desc' 
+    setSortOrder(prevOrder => prevOrder === 'desc' ? 'asc' : 'desc');
+  };
+
+  const handleFilterChange = (e) => {
+    setFilterAmount(e.target.value);
+  };
+
+  const applyFilterAndSort = () => {
+    let filteredAndSortedTransactions = [...mockTransactions];
+
+    if (filterAmount && !isNaN(filterAmount) && parseInt(filterAmount, 10) >= 0) {
+      filteredAndSortedTransactions = filteredAndSortedTransactions.filter(
+        tx => tx.amount >= parseInt(filterAmount, 10)
+      );
+    }
+
+    filteredAndSortedTransactions.sort((a, b) => {
+      return sortOrder === 'desc'
         ? new Date(b.date) - new Date(a.date)
         : new Date(a.date) - new Date(b.date);
-    }));
+    });
+
+    setTransactions(filteredAndSortedTransactions);
   };
 
   return (
@@ -33,12 +57,23 @@ const TransactionHistory = () => {
       <h3 className="text-xl font-bold mb-4">Your Transaction History</h3>
       {transactions.length > 0 ? (
         <>
-          <button 
-            onClick={handleSort}
-            className="mb-2 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
-          >
-            Sort by Date ({sortOrder === 'desc' ? 'Newest First' : 'Oldest First'})
-          </button>
+          <div className="mb-4 flex items-center">
+            <button 
+              onClick={handleSort}
+              className="mr-4 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+            >
+              Sort by Date ({sortOrder === 'desc' ? 'Newest First' : 'Oldest First'})
+            </button>
+            <label htmlFor="filter-amount" className="mr-2">Filter by min amount:</label>
+            <input
+              id="filter-amount"
+              type="number"
+              value={filterAmount}
+              onChange={handleFilterChange}
+              className="px-2 py-1 border rounded"
+              placeholder="Enter amount"
+            />
+          </div>
           <ul>
             {transactions.map(tx => (
               <li key={tx.id} data-testid="transaction-item" className="mb-2 p-2 bg-gray-100 rounded">

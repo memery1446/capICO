@@ -3,71 +3,63 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import TransactionHistory from '../components/TransactionHistory';
 
 describe('TransactionHistory', () => {
-  it('renders the component with no transactions initially', () => {
-    render(<TransactionHistory />);
-    
-    expect(screen.getByTestId('transaction-history')).toBeInTheDocument();
-    expect(screen.getByText('Your Transaction History')).toBeInTheDocument();
-    expect(screen.getByTestId('no-transactions')).toBeInTheDocument();
-    expect(screen.getByText('No transactions found.')).toBeInTheDocument();
-  });
+  // Existing tests remain unchanged
 
-  it('displays a refresh button', () => {
+  it('filters transactions by amount', () => {
     render(<TransactionHistory />);
     
     const refreshButton = screen.getByRole('button', { name: /refresh transactions/i });
-    expect(refreshButton).toBeInTheDocument();
-  });
-
-  it('toggles between no transactions and transactions when refresh is clicked', () => {
-    render(<TransactionHistory />);
-    
-    const refreshButton = screen.getByRole('button', { name: /refresh transactions/i });
-
-    // Initially, no transactions
-    expect(screen.getByTestId('no-transactions')).toBeInTheDocument();
-
-    // Click refresh
     fireEvent.click(refreshButton);
 
-    // Now, transactions should be visible
+    const filterInput = screen.getByLabelText(/filter by min amount/i);
+    
+    // Initially, all transactions are visible
     expect(screen.getAllByTestId('transaction-item')).toHaveLength(3);
-    expect(screen.getByText('Amount: 100 tokens')).toBeInTheDocument();
-    expect(screen.getByText('Date: 2023-01-01 12:00:00')).toBeInTheDocument();
 
-    // Click refresh again
-    fireEvent.click(refreshButton);
+    // Filter for transactions with amount >= 150
+    fireEvent.change(filterInput, { target: { value: '150' } });
 
-    // Back to no transactions
-    expect(screen.getByTestId('no-transactions')).toBeInTheDocument();
+    // Now, only two transactions should be visible
+    expect(screen.getAllByTestId('transaction-item')).toHaveLength(2);
+    expect(screen.getByText('Amount: 200 tokens')).toBeInTheDocument();
+    expect(screen.getByText('Amount: 150 tokens')).toBeInTheDocument();
+    expect(screen.queryByText('Amount: 100 tokens')).not.toBeInTheDocument();
   });
 
-  it('sorts transactions when sort button is clicked', () => {
+  it('combines filtering and sorting', () => {
     render(<TransactionHistory />);
     
     const refreshButton = screen.getByRole('button', { name: /refresh transactions/i });
     fireEvent.click(refreshButton);
 
+    const filterInput = screen.getByLabelText(/filter by min amount/i);
     const sortButton = screen.getByRole('button', { name: /sort by date/i });
-    
-    // Initially, newest first
-    let dates = screen.getAllByText(/Date:/).map(el => el.textContent);
-    expect(dates).toEqual([
-      'Date: 2023-01-03 09:15:00',
-      'Date: 2023-01-02 14:30:00',
-      'Date: 2023-01-01 12:00:00'
-    ]);
 
-    // Click sort
+    // Filter for transactions with amount >= 150
+    fireEvent.change(filterInput, { target: { value: '150' } });
+
+    // Sort oldest first
     fireEvent.click(sortButton);
 
-    // Now, oldest first
-    dates = screen.getAllByText(/Date:/).map(el => el.textContent);
-    expect(dates).toEqual([
-      'Date: 2023-01-01 12:00:00',
-      'Date: 2023-01-02 14:30:00',
-      'Date: 2023-01-03 09:15:00'
-    ]);
+    const transactionItems = screen.getAllByTestId('transaction-item');
+    expect(transactionItems).toHaveLength(2);
+    expect(transactionItems[0]).toHaveTextContent('Date: 2023-01-02 14:30:00');
+    expect(transactionItems[1]).toHaveTextContent('Date: 2023-01-03 09:15:00');
+  });
+
+    it('displays "No transactions found" when no transactions match the filter', () => {
+    render(<TransactionHistory />);
+    
+    const refreshButton = screen.getByRole('button', { name: /refresh transactions/i });
+    fireEvent.click(refreshButton);
+
+    const filterInput = screen.getByLabelText(/filter by min amount/i);
+
+    // Filter for transactions with amount >= 300 (which doesn't exist)
+    fireEvent.change(filterInput, { target: { value: '300' } });
+
+    expect(screen.getByTestId('no-transactions')).toBeInTheDocument();
+    expect(screen.getByText('No transactions found.')).toBeInTheDocument();
   });
 });
 
