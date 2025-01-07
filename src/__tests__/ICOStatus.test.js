@@ -67,5 +67,51 @@ describe('ICOStatusDisplay', () => {
     expect(progressBar).toHaveStyle({ width: '100%' });
     expect(screen.getByTestId('progress-text')).toHaveTextContent('100.00% Raised');
   });
+
+  it('renders the ICO Status title', () => {
+  const props = {
+    totalRaised: '50',
+    hardCap: '100',
+    tokenName: 'Test Token',
+    tokenSymbol: 'TEST'
+  };
+  render(<ICOStatusDisplay {...props} />);
+  expect(screen.getByText('ICO Status')).toBeInTheDocument();
+});
+
+  it('calculates and displays the correct progress percentage', () => {
+  const props = {
+    totalRaised: '75',
+    hardCap: '150',
+    tokenName: 'Test Token',
+    tokenSymbol: 'TEST'
+  };
+  render(<ICOStatusDisplay {...props} />);
+  expect(screen.getByTestId('progress-text')).toHaveTextContent('50.00% Raised');
+});
+
+  it('handles decimal values correctly', () => {
+  const props = {
+    totalRaised: '33.33',
+    hardCap: '100',
+    tokenName: 'Test Token',
+    tokenSymbol: 'TEST'
+  };
+  render(<ICOStatusDisplay {...props} />);
+  expect(screen.getByText('33.33 ETH')).toBeInTheDocument();
+  expect(screen.getByTestId('progress-text')).toHaveTextContent('33.33% Raised');
+});
+
+  it('has proper accessibility attributes', () => {
+  const props = {
+    totalRaised: '50',
+    hardCap: '100',
+    tokenName: 'Test Token',
+    tokenSymbol: 'TEST'
+  };
+  render(<ICOStatusDisplay {...props} />);
+  const progressBar = screen.getByRole('progressbar', { name: 'ICO Progress' });
+  expect(progressBar).toHaveAttribute('aria-label', 'ICO Progress');
+});
 });
 
