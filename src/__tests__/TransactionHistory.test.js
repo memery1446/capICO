@@ -1,64 +1,45 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import configureStore from 'redux-mock-store';
-import thunk from 'redux-thunk';
+import { render, screen, fireEvent } from '@testing-library/react';
 import TransactionHistory from '../components/TransactionHistory';
 
-// Mock the ethers library
-jest.mock('ethers', () => ({
-  ethers: {
-    providers: {
-      Web3Provider: jest.fn(() => ({
-        getSigner: jest.fn(() => ({
-          getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
-        })),
-      })),
-    },
-    Contract: jest.fn(() => ({
-      filters: {
-        TokensPurchased: jest.fn().mockReturnValue({}),
-      },
-      queryFilter: jest.fn().mockResolvedValue([]),
-    })),
-    utils: {
-      formatEther: jest.fn(val => val.toString()),
-    },
-  },
-}));
-
-const mockStore = configureStore([thunk]);
-
 describe('TransactionHistory', () => {
-  let store;
-
-  beforeEach(() => {
-    store = mockStore({
-      ico: {
-        tokenSymbol: 'TEST',
-      },
-    });
-
-    global.window.ethereum = {
-      request: jest.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
-    };
-
-    // Clear all mocks before each test
-    jest.clearAllMocks();
+  it('renders the component with no transactions initially', () => {
+    render(<TransactionHistory />);
+    
+    expect(screen.getByTestId('transaction-history')).toBeInTheDocument();
+    expect(screen.getByText('Your Transaction History')).toBeInTheDocument();
+    expect(screen.getByTestId('no-transactions')).toBeInTheDocument();
+    expect(screen.getByText('No transactions found.')).toBeInTheDocument();
   });
 
-  it('renders error state when there is an issue with ethers', async () => {
-    render(
-      <Provider store={store}>
-        <TransactionHistory />
-      </Provider>
-    );
+  it('displays a refresh button', () => {
+    render(<TransactionHistory />);
+    
+    const refreshButton = screen.getByRole('button', { name: /refresh transactions/i });
+    expect(refreshButton).toBeInTheDocument();
+  });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('error')).toBeInTheDocument();
-    });
+  it('toggles between no transactions and a transaction when refresh is clicked', () => {
+    render(<TransactionHistory />);
+    
+    const refreshButton = screen.getByRole('button', { name: /refresh transactions/i });
 
-    expect(screen.getByText(/provider.getSigner is not a function/)).toBeInTheDocument();
+    // Initially, no transactions
+    expect(screen.getByTestId('no-transactions')).toBeInTheDocument();
+
+    // Click refresh
+    fireEvent.click(refreshButton);
+
+    // Now, a transaction should be visible
+    expect(screen.getByTestId('transaction-item')).toBeInTheDocument();
+    expect(screen.getByText('Amount: 100 tokens')).toBeInTheDocument();
+    expect(screen.getByText('Date: 2023-01-01 12:00:00')).toBeInTheDocument();
+
+    // Click refresh again
+    fireEvent.click(refreshButton);
+
+    // Back to no transactions
+    expect(screen.getByTestId('no-transactions')).toBeInTheDocument();
   });
 });
 
