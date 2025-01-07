@@ -1,24 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
-import { ethers } from 'ethers';
-import { ICO_ADDRESS } from '../contracts/addresses';
-import CapICO from '../contracts/CapICO.json';
 
 const TierInfo = ({ getTiers }) => {
   const [tiers, setTiers] = useState([]);
   const [userInvestment, setUserInvestment] = useState('0');
   const [currentTier, setCurrentTier] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const tokenSymbol = useSelector(state => state.ico.tokenSymbol);
   const tokenBalance = useSelector(state => state.ico.tokenBalance);
   const tokenPrice = useSelector(state => state.ico.tokenPrice);
 
   const fetchTiers = useCallback(async () => {
-    if (typeof window.ethereum === 'undefined') {
-      console.error('Ethereum provider not found');
-      return;
-    }
-
     try {
       setIsLoading(true);
       const fetchedTiers = await getTiers();
@@ -45,7 +36,7 @@ const TierInfo = ({ getTiers }) => {
   }, [fetchTiers]);
 
   if (isLoading) {
-    return <div>Loading tier information...</div>;
+    return <div data-testid="loading">Loading tier information...</div>;
   }
 
   return (

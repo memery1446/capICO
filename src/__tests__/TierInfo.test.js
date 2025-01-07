@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
 import TierInfo from '../components/TierInfo';
@@ -42,13 +42,36 @@ describe('TierInfo', () => {
     };
   });
 
-  it('renders without crashing', () => {
-    render(
-      <Provider store={store}>
-        <TierInfo />
-      </Provider>
-    );
-    // If the component renders without throwing an error, this test will pass
+  it('renders loading state initially', async () => {
+    const mockGetTiers = jest.fn().mockReturnValue(new Promise(() => {})); // Never resolves
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <TierInfo getTiers={mockGetTiers} />
+        </Provider>
+      );
+    });
+    expect(screen.getByTestId('loading')).toHaveTextContent('Loading tier information...');
+  });
+
+  it('displays the Investment Tiers heading after loading', async () => {
+    const mockGetTiers = jest.fn().mockResolvedValue([
+      { minPurchase: '100', maxPurchase: '1000', discount: 5 },
+    ]);
+    
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <TierInfo getTiers={mockGetTiers} />
+        </Provider>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Investment Tiers')).toBeInTheDocument();
   });
 });
 
