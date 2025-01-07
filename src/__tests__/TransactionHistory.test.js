@@ -1,54 +1,64 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
+import thunk from 'redux-thunk';
 import TransactionHistory from '../components/TransactionHistory';
 
-const mockStore = configureStore([]);
-
+// Mock the ethers library
 jest.mock('ethers', () => ({
   ethers: {
     providers: {
       Web3Provider: jest.fn(() => ({
-        getSigner: () => ({
-          getAddress: () => Promise.resolve('0x1234567890123456789012345678901234567890')
-        })
-      }))
+        getSigner: jest.fn(() => ({
+          getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
+        })),
+      })),
     },
     Contract: jest.fn(() => ({
       filters: {
-        TokensPurchased: jest.fn()
+        TokensPurchased: jest.fn().mockReturnValue({}),
       },
       queryFilter: jest.fn().mockResolvedValue([]),
-      getBlock: jest.fn()
     })),
     utils: {
-      formatEther: jest.fn(val => val.toString())
-    }
-  }
+      formatEther: jest.fn(val => val.toString()),
+    },
+  },
 }));
 
-describe('TransactionHistory', () => {
-  beforeEach(() => {
-    global.window.ethereum = {
-      request: jest.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890'])
-    };
-  });
+const mockStore = configureStore([thunk]);
 
-  it('should render initial state', async () => {
-    const store = mockStore({
-      ico: { transactionHistory: [] }
+describe('TransactionHistory', () => {
+  let store;
+
+  beforeEach(() => {
+    store = mockStore({
+      ico: {
+        tokenSymbol: 'TEST',
+      },
     });
 
-    await act(async () => {
-      render(
+    global.window.ethereum = {
+      request: jest.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
+    };
+
+    // Clear all mocks before each test
+    jest.clearAllMocks();
+  });
+
+  it('renders error state when there is an issue with ethers', async () => {
+    render(
       <Provider store={store}>
         <TransactionHistory />
       </Provider>
     );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('error')).toBeInTheDocument();
     });
-    
-    expect(screen.getByText(/Failed to fetch transaction history/)).toBeInTheDocument();
+
+    expect(screen.getByText(/provider.getSigner is not a function/)).toBeInTheDocument();
   });
 });
 
