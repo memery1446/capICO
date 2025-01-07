@@ -23,5 +23,12 @@ describe('GlobalError', () => {
     
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
+
+  it('renders error message within the correct structure', () => {
+    render(<GlobalError error="Test error message" onClose={() => {}} />);
+
+    const container = screen.getByText('Test error message').closest('div');
+    expect(container).toHaveClass('bg-white p-6 rounded-lg shadow-xl');
+  });
 });
 

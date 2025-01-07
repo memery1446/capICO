@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { ethers } from 'ethers';
 import { setReferralBonus, setCurrentReferrer } from '../store/referralSlice';
-import { ICO_ADDRESS } from '../contracts/addresses';
-import CapICO from '../contracts/CapICO.json';
 
 const SUPPORTED_NETWORKS = {
   1: 'Ethereum Mainnet',
   31337: 'Hardhat Network',
   1337: 'Local Ganache',
-  // Add more networks as needed
 };
 
-const ReferralSystem = () => {
+const ReferralSystem = ({ ethersService }) => {
   const [newReferrer, setNewReferrer] = useState('');
   const [error, setError] = useState('');
   const [networkName, setNetworkName] = useState('');
@@ -21,29 +17,21 @@ const ReferralSystem = () => {
   const { tokenSymbol } = useSelector((state) => state.ico);
 
   const fetchReferralInfo = async () => {
-    if (typeof window.ethereum !== 'undefined' && isWalletConnected) {
+    if (isWalletConnected) {
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        
-        // Check if the network is supported
-        const network = await provider.getNetwork();
-        console.log('Current network chainId:', network.chainId);
-        
+        const network = await ethersService.getNetwork();
         if (!SUPPORTED_NETWORKS[network.chainId]) {
           throw new Error(`Unsupported network (chainId: ${network.chainId}). Please switch to a supported network.`);
         }
-
         setNetworkName(SUPPORTED_NETWORKS[network.chainId]);
 
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
-    
-        const address = await signer.getAddress();
-        const bonus = await contract.referralBonuses(address);
-        const referrer = await contract.referrers(address);
-    
-        dispatch(setReferralBonus(ethers.utils.formatEther(bonus)));
-        dispatch(setCurrentReferrer(referrer !== ethers.constants.AddressZero ? referrer : ''));
+        const [bonus, referrer] = await Promise.all([
+          ethersService.getReferralBonus(),
+          ethersService.getCurrentReferrer()
+        ]);
+
+        dispatch(setReferralBonus(bonus));
+        dispatch(setCurrentReferrer(referrer));
         setError('');
       } catch (error) {
         console.error('Error fetching referral info:', error);
@@ -53,19 +41,13 @@ const ReferralSystem = () => {
   };
 
   useEffect(() => {
-    if (isWalletConnected) {
-      fetchReferralInfo();
-    }
+    fetchReferralInfo();
   }, [isWalletConnected]);
 
   const handleSetReferrer = async () => {
-    if (typeof window.ethereum !== 'undefined' && isWalletConnected) {
+    if (isWalletConnected) {
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
-        
-        await contract.setReferrer(newReferrer);
+        await ethersService.setReferrer(newReferrer);
         await fetchReferralInfo();
         setNewReferrer('');
         setError('');
@@ -90,6 +72,7 @@ const ReferralSystem = () => {
       <h2 className="text-2xl font-bold mb-4">Referral System</h2>
       {error && <p className="text-red-500 mb-4">{error}</p>}
       <div className="mb-4">
+        <p className="font-semibold">Network: {networkName}</p>
         <p className="font-semibold">Your Referral Bonus: {referralBonus} {tokenSymbol}</p>
       </div>
       <div className="mb-4">
