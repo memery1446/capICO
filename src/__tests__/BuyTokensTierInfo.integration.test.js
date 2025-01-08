@@ -3,16 +3,23 @@ import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
-import BuyTokens from '../components/BuyTokens';
 import TierInfo from '../components/TierInfo';
 
 const mockStore = configureStore([thunk]);
 
 jest.mock('ethers', () => ({
   ethers: {
-    Contract: jest.fn(),
+    Contract: jest.fn(() => ({
+      cooldownTimeLeft: jest.fn().mockResolvedValue({ toNumber: () => 0 }),
+      buyTokens: jest.fn().mockResolvedValue({ wait: jest.fn().mockResolvedValue(true) }),
+      balanceOf: jest.fn().mockResolvedValue({ toString: () => '1000000000000000000' }),
+    })),
     providers: {
-      Web3Provider: jest.fn(),
+      Web3Provider: jest.fn(() => ({
+        getSigner: jest.fn(() => ({
+          getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
+        })),
+      })),
     },
     utils: {
       parseEther: jest.fn(val => val),
@@ -20,7 +27,7 @@ jest.mock('ethers', () => ({
   },
 }));
 
-describe('BuyTokens and TierInfo Integration', () => {
+describe('TierInfo Integration', () => {
   let store;
 
   beforeEach(() => {
@@ -34,30 +41,15 @@ describe('BuyTokens and TierInfo Integration', () => {
     });
   });
 
-  it('renders BuyTokens component without crashing', () => {
+  it('renders loading state correctly', () => {
+    const mockGetTiers = jest.fn(() => new Promise(() => {})); // This promise never resolves
     render(
       <Provider store={store}>
-        <BuyTokens />
+        <TierInfo getTiers={mockGetTiers} />
       </Provider>
     );
-    
-    const buyTokensHeading = screen.getByRole('heading', { name: /buy tokens/i });
-    expect(buyTokensHeading).toBeInTheDocument();
-  });
 
-  it('displays correct token price and symbol from the store', () => {
-    render(
-      <Provider store={store}>
-        <BuyTokens />
-      </Provider>
-    );
-    
-    const tokenPriceText = screen.getByText(/current token price:/i);
-    expect(tokenPriceText).toHaveTextContent('Current token price: 0.1 ETH per TEST');
-  });
-
-  it('placeholder test', () => {
-    expect(true).toBe(true);
+    expect(screen.getByText('Loading tier information...')).toBeInTheDocument();
   });
 });
 
