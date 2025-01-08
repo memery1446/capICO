@@ -80,5 +80,22 @@ describe('Vesting Flow Integration', () => {
     expect(actions).toContainEqual(expect.objectContaining({
       type: expect.stringMatching(/setWalletConnection/i)
     }));
+
+
   });
+  it('maintains correct state across components', async () => {
+  // Verify WalletConnection, VestingInfo, and TokenVestingDashboard  
+  // all reflect same wallet/vesting state
+});
+it('handles failed claim attempts correctly', async () => {
+  // Mock transaction failure
+  // Verify error display
+  // Check state reverts correctly
+});
+it('handles token release interaction', async () => {
+  // Mock successful release transaction
+  // Verify button enables after cliff period
+  // Verify UI updates after release
+  // Check new balance reflected
+});
 });
