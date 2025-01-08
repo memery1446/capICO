@@ -73,6 +73,13 @@ console.error = (...args) => {
   if (args[0].includes('Error fetching vesting and lockup info:')) {
     return;
   }
+  // Add BuyTokens related error patterns
+  if (args[0].includes('Error checking cooldown:')) {
+    return;
+  }
+  if (args[0].includes('Error buying tokens:')) {
+    return;
+  }
   originalError.apply(console, args);
 };
 
