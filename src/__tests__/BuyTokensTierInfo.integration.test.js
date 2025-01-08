@@ -176,5 +176,75 @@ describe('TierInfo Integration', () => {
     // Check for the next tier requirement
     expect(screen.getByTestId('next-tier-requirement')).toHaveTextContent('Next tier requirement: 5 ETH');
   }, 10000);
+
+  it('handles edge case of zero investment correctly', async () => {
+    const mockTiers = [
+      { minPurchase: '0', maxPurchase: '1', discount: '0' },
+      { minPurchase: '1', maxPurchase: '5', discount: '5' },
+      { minPurchase: '5', maxPurchase: '10', discount: '10' },
+    ];
+    const mockGetTiers = jest.fn().mockResolvedValue(mockTiers);
+
+    const zeroInvestmentStore = mockStore({
+      ico: {
+        tokenSymbol: 'TEST',
+        tokenPrice: '0.1',
+        tokenBalance: '0',
+        maxPurchaseAmount: '10',
+      },
+    });
+
+    render(
+      <Provider store={zeroInvestmentStore}>
+        <TierInfo getTiers={mockGetTiers} />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Your estimated total investment: 0.0000 ETH')).toBeInTheDocument();
+      expect(screen.getByText('Your current tier: 1')).toBeInTheDocument();
+      expect(screen.getByText('Next tier requirement: 1 ETH')).toBeInTheDocument();
+    });
+
+    const firstTierElement = await screen.findByTestId('tier-1');
+    expect(firstTierElement).toHaveTextContent('Current');
+  }, 10000);
+
+  it('displays correct tier status for each tier', async () => {
+    const mockTiers = [
+      { minPurchase: '0', maxPurchase: '1', discount: '0' },
+      { minPurchase: '1', maxPurchase: '5', discount: '5' },
+      { minPurchase: '5', maxPurchase: '10', discount: '10' },
+    ];
+    const mockGetTiers = jest.fn().mockResolvedValue(mockTiers);
+
+    const midInvestmentStore = mockStore({
+      ico: {
+        tokenSymbol: 'TEST',
+        tokenPrice: '0.1',
+        tokenBalance: '30', // 3 ETH worth of tokens
+        maxPurchaseAmount: '10',
+      },
+    });
+
+    render(
+      <Provider store={midInvestmentStore}>
+        <TierInfo getTiers={mockGetTiers} />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Your estimated total investment: 3.0000 ETH')).toBeInTheDocument();
+      expect(screen.getByText('Your current tier: 2')).toBeInTheDocument();
+    });
+
+    const tier1Element = await screen.findByTestId('tier-1');
+    const tier2Element = await screen.findByTestId('tier-2');
+    const tier3Element = await screen.findByTestId('tier-3');
+
+    expect(tier1Element).toHaveTextContent('Achieved');
+    expect(tier2Element).toHaveTextContent('Current');
+    expect(tier3Element).toHaveTextContent('Not Reached');
+  }, 10000);
 });
 
