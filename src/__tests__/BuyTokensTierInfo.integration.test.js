@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
@@ -51,5 +51,130 @@ describe('TierInfo Integration', () => {
 
     expect(screen.getByText('Loading tier information...')).toBeInTheDocument();
   });
+
+  it('renders tier information correctly after loading', async () => {
+    const mockTiers = [
+      { minPurchase: '0', maxPurchase: '1', discount: '0' },
+      { minPurchase: '1', maxPurchase: '5', discount: '5' },
+      { minPurchase: '5', maxPurchase: '10', discount: '10' },
+    ];
+    const mockGetTiers = jest.fn().mockResolvedValue(mockTiers);
+
+    render(
+      <Provider store={store}>
+        <TierInfo getTiers={mockGetTiers} />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Investment Tiers')).toBeInTheDocument();
+      expect(screen.getByText('Your estimated total investment: 1.0000 ETH')).toBeInTheDocument();
+      expect(screen.getByText('Your current tier: 2')).toBeInTheDocument();
+    });
+
+    mockTiers.forEach((tier, index) => {
+      expect(screen.getByTestId(`tier-${index + 1}`)).toBeInTheDocument();
+    });
+  });
+
+  it('calculates current tier correctly based on user investment', async () => {
+    const mockTiers = [
+      { minPurchase: '0', maxPurchase: '1', discount: '0' },
+      { minPurchase: '1', maxPurchase: '5', discount: '5' },
+      { minPurchase: '5', maxPurchase: '10', discount: '10' },
+    ];
+    const mockGetTiers = jest.fn().mockResolvedValue(mockTiers);
+
+    const highInvestmentStore = mockStore({
+      ico: {
+        tokenSymbol: 'TEST',
+        tokenPrice: '0.1',
+        tokenBalance: '100', // 10 ETH worth of tokens
+        maxPurchaseAmount: '10',
+      },
+    });
+
+    render(
+      <Provider store={highInvestmentStore}>
+        <TierInfo getTiers={mockGetTiers} />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Your estimated total investment: 10.0000 ETH')).toBeInTheDocument();
+      expect(screen.getByText('Your current tier: 3')).toBeInTheDocument();
+      expect(screen.getByText('Next tier requirement: Max tier reached')).toBeInTheDocument();
+    });
+  });
+
+  it('updates tier information when token balance changes', async () => {
+    const mockTiers = [
+      { minPurchase: '0', maxPurchase: '1', discount: '0' },
+      { minPurchase: '1', maxPurchase: '5', discount: '5' },
+      { minPurchase: '5', maxPurchase: '10', discount: '10' },
+    ];
+    const mockGetTiers = jest.fn().mockResolvedValue(mockTiers);
+
+    const { rerender } = render(
+      <Provider store={store}>
+        <TierInfo getTiers={mockGetTiers} />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Your estimated total investment: 1.0000 ETH')).toBeInTheDocument();
+      expect(screen.getByText('Your current tier: 2')).toBeInTheDocument();
+    });
+
+    const updatedStore = mockStore({
+      ico: {
+        ...store.getState().ico,
+        tokenBalance: '50', // 5 ETH worth of tokens
+      },
+    });
+
+    rerender(
+      <Provider store={updatedStore}>
+        <TierInfo getTiers={mockGetTiers} />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Your estimated total investment: 5.0000 ETH')).toBeInTheDocument();
+      expect(screen.getByText('Your current tier: 3')).toBeInTheDocument();
+    });
+  });
+
+  it('displays correct tier information', async () => {
+    const mockTiers = [
+      { minPurchase: '0', maxPurchase: '1', discount: '0' },
+      { minPurchase: '1', maxPurchase: '5', discount: '5' },
+      { minPurchase: '5', maxPurchase: '10', discount: '10' },
+    ];
+    const mockGetTiers = jest.fn().mockResolvedValue(mockTiers);
+
+    render(
+      <Provider store={store}>
+        <TierInfo getTiers={mockGetTiers} />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading tier information...')).not.toBeInTheDocument();
+    }, { timeout: 6000 });
+
+    for (let i = 0; i < mockTiers.length; i++) {
+      const tierElement = await screen.findByTestId(`tier-${i + 1}`, {}, { timeout: 6000 });
+      expect(tierElement).toHaveTextContent(mockTiers[i].minPurchase);
+      expect(tierElement).toHaveTextContent(mockTiers[i].maxPurchase);
+      expect(tierElement).toHaveTextContent(mockTiers[i].discount);
+    }
+
+    // Check for the current tier
+    expect(screen.getByTestId('current-tier')).toHaveTextContent('Your current tier: 2');
+
+    // Check for the next tier requirement
+    expect(screen.getByTestId('next-tier-requirement')).toHaveTextContent('Next tier requirement: 5 ETH');
+  }, 10000);
 });
 
