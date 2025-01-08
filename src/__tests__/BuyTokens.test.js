@@ -49,6 +49,7 @@ describe('BuyTokens', () => {
       ico: {
         tokenSymbol: 'TEST',
         tokenPrice: '0.1',
+        maxPurchaseAmount: '10',
       },
     });
 
@@ -395,4 +396,147 @@ describe('BuyTokens', () => {
     expect(mockContract.buyTokens).not.toHaveBeenCalled();
     expect(screen.getByText('Failed to buy tokens. Please try again.')).toBeInTheDocument();
   });
-});
+
+  it('validates max purchase amount', async () => {
+    const mockContract = {
+      buyTokens: jest.fn(),
+      cooldownTimeLeft: jest.fn().mockResolvedValue({ toNumber: () => 0 })
+    };
+
+    jest.spyOn(require('ethers').ethers, 'Contract')
+      .mockImplementation(() => mockContract);
+
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <BuyTokens />
+        </Provider>
+      );
+    });
+
+    const amountInput = screen.getByLabelText('Amount of ETH to spend');
+    await act(async () => {
+      fireEvent.change(amountInput, { target: { value: '11' } }); // Exceeds max of 10
+    });
+
+    const buyButton = screen.getByRole('button', { name: /buy tokens/i });
+    await act(async () => {
+      fireEvent.click(buyButton);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to buy tokens. Please try again.')).toBeInTheDocument();
+    });
+    expect(mockContract.buyTokens).not.toHaveBeenCalled();
+  });
+
+  it('updates estimated tokens when token price changes', async () => {
+    const { rerender } = render(
+      <Provider store={store}>
+        <BuyTokens />
+      </Provider>
+    );
+
+    const amountInput = screen.getByLabelText('Amount of ETH to spend');
+    await act(async () => {
+      fireEvent.change(amountInput, { target: { value: '1' } });
+    });
+
+    expect(screen.getByText('Estimated tokens to receive: 10.00 TEST')).toBeInTheDocument();
+
+    // Update store with new token price
+    const newStore = mockStore({
+      ico: {
+        tokenSymbol: 'TEST',
+        tokenPrice: '0.2',
+        maxPurchaseAmount: '10',
+      },
+    });
+
+    // Rerender with new store
+    rerender(
+      <Provider store={newStore}>
+        <BuyTokens />
+      </Provider>
+    );
+
+    // Need to trigger input change again since the store update doesn't automatically recalculate
+    await act(async () => {
+      fireEvent.change(amountInput, { target: { value: '1' } });
+    });
+
+    expect(screen.getByText('Estimated tokens to receive: 5.00 TEST')).toBeInTheDocument();
+  });
+
+  it('handles very large number inputs appropriately', async () => {
+    const mockContract = {
+      buyTokens: jest.fn(),
+      cooldownTimeLeft: jest.fn().mockResolvedValue({ toNumber: () => 0 })
+    };
+
+    jest.spyOn(require('ethers').ethers, 'Contract')
+      .mockImplementation(() => mockContract);
+
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <BuyTokens />
+        </Provider>
+      );
+    });
+
+    const amountInput = screen.getByLabelText('Amount of ETH to spend');
+    
+    // Test a very large number
+    await act(async () => {
+      fireEvent.change(amountInput, { target: { value: '999999999999999' } });
+    });
+
+    const buyButton = screen.getByRole('button', { name: /buy tokens/i });
+    await act(async () => {
+      fireEvent.click(buyButton);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to buy tokens. Please try again.')).toBeInTheDocument();
+    });
+    expect(mockContract.buyTokens).not.toHaveBeenCalled();
+  });
+
+it('handles network/provider errors gracefully', async () => {
+    // Mock a failed provider setup
+    jest.spyOn(require('ethers').ethers.providers, 'Web3Provider')
+      .mockImplementation(() => {
+        throw new Error('Provider network error');
+      });
+
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <BuyTokens />
+        </Provider>
+      );
+    });
+
+    const amountInput = screen.getByLabelText('Amount of ETH to spend');
+    await act(async () => {
+      fireEvent.change(amountInput, { target: { value: '1' } });
+    });
+
+    const buyButton = screen.getByRole('button', { name: /buy tokens/i });
+    await act(async () => {
+      fireEvent.click(buyButton);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to buy tokens. Please try again.')).toBeInTheDocument();
+    });
+
+  }); // Close the it block
+  
+
+}); // Close the describe block
+
+
+
+
