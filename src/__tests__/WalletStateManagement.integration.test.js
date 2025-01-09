@@ -102,5 +102,6 @@ describe('Wallet State Management', () => {
       method: 'eth_requestAccounts'
     });
   });
+
 });
 
