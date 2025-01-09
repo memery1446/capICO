@@ -19,6 +19,63 @@ function AppContent() {
   const [isOwner, setIsOwner] = useState(false);
   const dispatch = useDispatch();
 
+  const getTiers = async () => {
+    if (typeof window.ethereum !== 'undefined') {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, provider);
+      try {
+        const tierCount = await contract.getTierCount();
+        const tiers = [];
+        for (let i = 0; i < tierCount.toNumber(); i++) {
+          const tier = await contract.getTier(i);
+          tiers.push({
+            minPurchase: ethers.utils.formatEther(tier[0]),
+            maxPurchase: ethers.utils.formatEther(tier[1]),
+            discount: tier[2].toString()
+          });
+        }
+        return tiers;
+      } catch (error) {
+        console.error("Error fetching tiers:", error);
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const getEthersService = () => {
+    if (typeof window.ethereum !== 'undefined') {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
+
+      return {
+        getNetwork: () => provider.getNetwork(),
+        getReferralBonus: async () => {
+          try {
+            const address = await signer.getAddress();
+            const bonus = await contract.referralBonuses(address);
+            return ethers.utils.formatEther(bonus);
+          } catch (error) {
+            console.error("Error getting referral bonus:", error);
+            return "0";
+          }
+        },
+        getCurrentReferrer: async () => {
+          try {
+            const address = await signer.getAddress();
+            return contract.referrers(address);
+          } catch (error) {
+            console.error("Error getting current referrer:", error);
+            return null;
+          }
+        },
+        setReferrer: (referrer) => contract.setReferrer(referrer),
+      };
+    }
+    return null;
+  };
+
   useEffect(() => {
     const checkOwnership = async () => {
       if (typeof window.ethereum !== 'undefined') {
@@ -50,9 +107,9 @@ function AppContent() {
         {isOwner && <OwnerActions />}
         <WhitelistStatus />
         <BuyTokens />
-        <TierInfo />
+        <TierInfo getTiers={getTiers} />
         <TokenVestingDashboard />
-        <ReferralSystem />
+        <ReferralSystem ethersService={getEthersService()} />
         <TransactionHistory />
       </div>
     </div>
