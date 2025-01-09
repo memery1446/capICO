@@ -24,7 +24,7 @@ jest.mock('ethers', () => {
         getSigner: jest.fn(() => ({
           getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
         })),
-        getNetwork: jest.fn().mockResolvedValue({ chainId: 1, name: 'mainnet' }),
+        getNetwork: jest.fn().mockResolvedValue({ chainId: 1, name: 'mainnet' }), // Added missing mock
       })),
     },
   };

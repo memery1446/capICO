@@ -85,6 +85,9 @@ console.error = (...args) => {
   if (args[0].includes('provider.getSigner is not a function')) {
     return;
   }
+  if (args[0].includes('Error fetching referral info:')) {
+    return;
+  }
   originalError.apply(console, args);
 };
 
