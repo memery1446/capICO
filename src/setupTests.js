@@ -91,6 +91,31 @@ console.error = (...args) => {
   originalError.apply(console, args);
 };
 
+expect.extend({
+  toHaveInvestmentAmount(received, min, max) {
+    const text = received.textContent;
+    const match = text.match(/Your estimated total investment: ([\d.]+) ETH/);
+    if (!match) {
+      return {
+        message: () => `expected "${text}" to contain an investment amount`,
+        pass: false,
+      };
+    }
+    const amount = parseFloat(match[1]);
+    const pass = amount >= min && amount <= max;
+    if (pass) {
+      return {
+        message: () => `expected "${text}" not to have an investment amount between ${min} and ${max}`,
+        pass: true,
+      };
+    } else {
+      return {
+        message: () => `expected "${text}" to have an investment amount between ${min} and ${max}`,
+        pass: false,
+      };
+    }
+  },
+});
 global.window.ethereum = {
   request: jest.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
   isMetaMask: true,
