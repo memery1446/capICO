@@ -1,0 +1,109 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`TierInfo Integration matches snapshot for loaded state 1`] = `
+<div>
+  <div
+    class="bg-white p-6 rounded-lg shadow-md"
+    data-testid="tier-info"
+  >
+    <h2
+      class="text-2xl font-bold mb-4"
+    >
+      Investment Tiers
+    </h2>
+    <p
+      class="mb-4"
+      data-testid="user-investment"
+    >
+      Your estimated total investment: 
+      1.0000
+       ETH
+    </p>
+    <div
+      class="overflow-x-auto"
+    >
+      <table
+        class="min-w-full table-auto"
+      >
+        <thead>
+          <tr
+            class="bg-gray-200"
+          >
+            <th
+              class="px-4 py-2"
+            >
+              Tier
+            </th>
+            <th
+              class="px-4 py-2"
+            >
+              Min Purchase (ETH)
+            </th>
+            <th
+              class="px-4 py-2"
+            >
+              Max Purchase (ETH)
+            </th>
+            <th
+              class="px-4 py-2"
+            >
+              Discount (%)
+            </th>
+            <th
+              class="px-4 py-2"
+            >
+              Status
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            class="bg-green-100"
+            data-testid="tier-1"
+          >
+            <td
+              class="border px-4 py-2"
+            >
+              1
+            </td>
+            <td
+              class="border px-4 py-2"
+            >
+              0
+            </td>
+            <td
+              class="border px-4 py-2"
+            >
+              1
+            </td>
+            <td
+              class="border px-4 py-2"
+            >
+              0
+            </td>
+            <td
+              class="border px-4 py-2"
+            >
+              Current
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p
+      class="mt-4 text-sm text-gray-600"
+      data-testid="current-tier"
+    >
+      Your current tier: 
+      1
+    </p>
+    <p
+      class="mt-2 text-sm text-gray-600"
+      data-testid="next-tier-requirement"
+    >
+      Next tier requirement: 
+      Max tier reached
+    </p>
+  </div>
+</div>
+`;
