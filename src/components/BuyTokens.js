@@ -80,8 +80,8 @@ const BuyTokens = () => {
       setReferrer('');
 
       // Update ICO info after successful purchase
-      const tokenBalance = await contract.balanceOf(await signer.getAddress());
-      dispatch(updateICOInfo({ tokenBalance: tokenBalance.toString() }));
+      // const tokenBalance = await contract.balanceOf(await signer.getAddress());
+      // dispatch(updateICOInfo({ tokenBalance: tokenBalance.toString() }));
 
       checkCooldown(); // Refresh cooldown time
     } catch (error) {

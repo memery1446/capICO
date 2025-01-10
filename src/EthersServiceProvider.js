@@ -3,6 +3,7 @@ import { ICO_ADDRESS, TOKEN_ADDRESS } from './contracts/addresses';
 import CapICO from './contracts/CapICO.json';
 import ICOToken from './contracts/ICOToken.json';
 
+
 export async function createEthersService(provider) {
   if (!provider) {
     throw new Error('Provider is required');
@@ -17,15 +18,18 @@ export async function createEthersService(provider) {
     icoContract,
     tokenContract,
     
-    // Core purchase functionality - simplified to just handle the transaction
-    buyTokens: async (amount) => {
-      const tx = await icoContract.buyTokens({ value: amount });
-      await tx.wait();
-      // Let polling handle the balance update
-      return true;
+    // Core balance functionality
+    balanceOf: async (address) => {
+      return tokenContract.balanceOf(address);
     },
 
-    // Rest of existing functionality
+    // Core purchase functionality
+    buyTokens: async (amount) => {
+      const tx = await icoContract.buyTokens({ value: amount });
+      return tx.wait();
+    },
+
+    // Existing functionality
     getCurrentTokenPrice: () => icoContract.getCurrentTokenPrice(),
     calculateTokenAmount: (weiAmount, tokenPrice) => 
       icoContract.calculateTokenAmount(weiAmount, tokenPrice),
