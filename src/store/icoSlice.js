@@ -1,4 +1,7 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { ethers } from 'ethers';
+import { ICO_ADDRESS } from '../contracts/addresses';
+import ICO_ABI from '../contracts/CapICO.json';
 
 const initialState = {
   isActive: false,
@@ -22,7 +25,29 @@ const initialState = {
   lockedTokens: '0',
   currentTokenPrice: '0',
   estimatedTokens: '0',
+  isLoading: false,
+  error: null,
 };
+
+export const fetchTransactionHistory = createAsyncThunk(
+  'ico/fetchTransactionHistory',
+  async (address, { getState }) => {
+    const { provider } = getState().wallet;
+    if (!provider) throw new Error('No provider available');
+
+    const contract = new ethers.Contract(ICO_ADDRESS, ICO_ABI, provider);
+    
+    const filter = contract.filters.TokensPurchased(address);
+    const events = await contract.queryFilter(filter);
+
+    return events.map(event => ({
+      id: event.transactionHash,
+      amount: ethers.utils.formatEther(event.args.amount),
+      tokens: ethers.utils.formatEther(event.args.tokens),
+      date: new Date(event.blockNumber * 1000).toISOString(),
+    }));
+  }
+);
 
 export const icoSlice = createSlice({
   name: 'ico',
@@ -74,6 +99,21 @@ export const icoSlice = createSlice({
     setEstimatedTokens: (state, action) => {
       state.estimatedTokens = action.payload;
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchTransactionHistory.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchTransactionHistory.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.transactionHistory = action.payload;
+      })
+      .addCase(fetchTransactionHistory.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.error.message;
+      });
   },
 });
 

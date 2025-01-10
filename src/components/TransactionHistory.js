@@ -1,100 +1,111 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSelector } from 'react-redux';
+import { withEthers } from '../withEthers';
+import { Card } from './ui/Card';
+import Button from './ui/Button';
+import { ethers } from 'ethers';
 
-const mockTransactions = [
-  { id: 1, amount: 100, date: '2023-01-01 12:00:00' },
-  { id: 2, amount: 200, date: '2023-01-02 14:30:00' },
-  { id: 3, amount: 150, date: '2023-01-03 09:15:00' },
-];
-
-const TransactionHistory = () => {
+const TransactionHistory = ({ ethersService }) => {
   const [transactions, setTransactions] = useState([]);
-  const [sortOrder, setSortOrder] = useState('desc');
-  const [filterAmount, setFilterAmount] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [address, setAddress] = useState(null);
+  const isWalletConnected = useSelector((state) => state.referral.isWalletConnected);
+
+  const getAddress = useCallback(async () => {
+    if (ethersService && ethersService._service && isWalletConnected) {
+      try {
+        const address = await ethersService._service.getSignerAddress();
+        setAddress(address);
+      } catch (err) {
+        console.error('Error getting address:', err);
+        setError('Failed to get wallet address');
+      }
+    }
+  }, [ethersService, isWalletConnected]);
 
   useEffect(() => {
-    if (transactions.length > 0) {
-      applyFilterAndSort();
+    getAddress();
+  }, [getAddress]);
+
+  const fetchTransactions = useCallback(async () => {
+    if (!ethersService || !ethersService._service || !isWalletConnected || !address) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const filter = ethersService._service.icoContract.filters.TokensPurchased(address);
+      const events = await ethersService._service.icoContract.queryFilter(filter);
+
+      const formattedTransactions = await Promise.all(events.map(async (event) => {
+        const block = await ethersService._service.provider.getBlock(event.blockNumber);
+        return {
+          id: event.transactionHash,
+          amount: ethers.utils.formatEther(event.args.amount),
+          tokens: ethers.utils.formatEther(event.args.tokens),
+          date: new Date(block.timestamp * 1000).toLocaleString(),
+        };
+      }));
+
+      setTransactions(formattedTransactions.reverse()); // Most recent first
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+      setError('Failed to fetch transactions. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-  }, [filterAmount, sortOrder, transactions.length]);
+  }, [ethersService, isWalletConnected, address]);
 
-  const handleRefresh = () => {
-    setFilterAmount('');
-    if (transactions.length) {
-      setTransactions([]);
-    } else {
-      setTransactions([...mockTransactions].sort((a, b) => new Date(b.date) - new Date(a.date)));
+  useEffect(() => {
+    if (isWalletConnected && address) {
+      fetchTransactions();
     }
-  };
+  }, [isWalletConnected, address, fetchTransactions]);
 
-  const handleSort = () => {
-    setSortOrder(prevOrder => prevOrder === 'desc' ? 'asc' : 'desc');
-  };
+  if (!isWalletConnected) {
+    return <Card className="p-4">Please connect your wallet to view transaction history.</Card>;
+  }
 
-  const handleFilterChange = (e) => {
-    setFilterAmount(e.target.value);
-  };
+  if (isLoading) {
+    return <Card className="p-4">Loading transaction history...</Card>;
+  }
 
-  const applyFilterAndSort = () => {
-    let filteredAndSortedTransactions = [...mockTransactions];
-
-    if (filterAmount && !isNaN(filterAmount) && parseInt(filterAmount, 10) >= 0) {
-      filteredAndSortedTransactions = filteredAndSortedTransactions.filter(
-        tx => tx.amount >= parseInt(filterAmount, 10)
-      );
-    }
-
-    filteredAndSortedTransactions.sort((a, b) => {
-      return sortOrder === 'desc'
-        ? new Date(b.date) - new Date(a.date)
-        : new Date(a.date) - new Date(b.date);
-    });
-
-    setTransactions(filteredAndSortedTransactions);
-  };
+  if (error) {
+    return <Card className="p-4 text-red-500">{error}</Card>;
+  }
 
   return (
-    <div data-testid="transaction-history" className="p-4 bg-white rounded-lg shadow">
-      <h3 className="text-xl font-bold mb-4">Your Transaction History</h3>
-      {transactions.length > 0 ? (
-        <>
-          <div className="mb-4 flex items-center">
-            <button 
-              onClick={handleSort}
-              className="mr-4 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
-            >
-              Sort by Date ({sortOrder === 'desc' ? 'Newest First' : 'Oldest First'})
-            </button>
-            <label htmlFor="filter-amount" className="mr-2">Filter by min amount:</label>
-            <input
-              id="filter-amount"
-              type="number"
-              value={filterAmount}
-              onChange={handleFilterChange}
-              className="px-2 py-1 border rounded"
-              placeholder="Enter amount"
-            />
-          </div>
-          <ul>
-            {transactions.map(tx => (
-              <li key={tx.id} data-testid="transaction-item" className="mb-2 p-2 bg-gray-100 rounded">
-                <p>Amount: {tx.amount} tokens</p>
-                <p>Date: {tx.date}</p>
-              </li>
-            ))}
-          </ul>
-        </>
+    <Card className="p-4">
+      <h2 className="text-2xl font-bold mb-4">Transaction History</h2>
+      <Button onClick={fetchTransactions} className="mb-4">
+        Refresh Transactions
+      </Button>
+      {transactions.length === 0 ? (
+        <p>No transactions found.</p>
       ) : (
-        <p data-testid="no-transactions" className="text-gray-600">No transactions found.</p>
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <th className="border border-gray-300 px-4 py-2">Date</th>
+              <th className="border border-gray-300 px-4 py-2">Amount (ETH)</th>
+              <th className="border border-gray-300 px-4 py-2">Tokens</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transactions.map((tx) => (
+              <tr key={tx.id}>
+                <td className="border border-gray-300 px-4 py-2">{tx.date}</td>
+                <td className="border border-gray-300 px-4 py-2">{tx.amount}</td>
+                <td className="border border-gray-300 px-4 py-2">{tx.tokens}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
-      <button 
-        onClick={handleRefresh}
-        className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-      >
-        {transactions.length ? 'Clear Transactions' : 'Refresh Transactions'}
-      </button>
-    </div>
+    </Card>
   );
 };
 
-export default TransactionHistory;
+export default withEthers(TransactionHistory);
 
