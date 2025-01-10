@@ -16,6 +16,16 @@ const formatAmount = (value) => {
   return isNaN(number) ? "0.00" : number.toFixed(2);
 };
 
+const getErrorMessage = (error) => {
+  if (!window.ethereum) return 'Please install MetaMask to continue.';
+  if (error?.code === 4001) return 'Transaction was rejected in MetaMask.';
+  if (error?.code === -32603) return 'Insufficient balance for transaction.';
+  if (error?.message?.includes('cooldown')) return 'Please wait for cooldown period to end.';
+  if (error?.message?.includes('whitelist')) return 'Your address is not whitelisted.';
+  if (error?.message?.includes('hardcap')) return 'Purchase would exceed ICO hard cap.';
+  return 'Failed to buy tokens. Please try again.';
+};
+
 const BuyTokens = () => {
   const [amount, setAmount] = useState('');
   const [referrer, setReferrer] = useState('');
@@ -23,6 +33,8 @@ const BuyTokens = () => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [cooldownTimeLeft, setCooldownTimeLeft] = useState(0);
+  const [txStatus, setTxStatus] = useState('');
+  const [txHash, setTxHash] = useState('');
   const tokenSymbol = useSelector((state) => state.ico.tokenSymbol);
   const tokenPrice = useSelector((state) => state.ico.tokenPrice);
   const dispatch = useDispatch();
@@ -60,6 +72,8 @@ const BuyTokens = () => {
     setIsLoading(true);
     setError('');
     setSuccessMessage('');
+    setTxStatus('');
+    setTxHash('');
 
     if (cooldownTimeLeft > 0) {
       setError(`Cooldown period not over. Please wait ${formatTime(cooldownTimeLeft)} before making another purchase.`);
@@ -72,21 +86,28 @@ const BuyTokens = () => {
       const signer = provider.getSigner();
       const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
 
+      setTxStatus('Awaiting wallet approval...');
       const tx = await contract.buyTokens({ value: ethers.utils.parseEther(formatAmount(amount)) });
-      await tx.wait();
+      setTxStatus('Transaction submitted...');
+      setTxHash(tx.hash);
 
+      await tx.wait();
+      setTxStatus('Transaction confirmed!');
       setSuccessMessage(`Successfully purchased tokens!`);
-      setAmount(''); // Clear the input after successful purchase
+      setAmount('');
       setReferrer('');
 
-      // Update ICO info after successful purchase
-      // const tokenBalance = await contract.balanceOf(await signer.getAddress());
-      // dispatch(updateICOInfo({ tokenBalance: tokenBalance.toString() }));
-
-      checkCooldown(); // Refresh cooldown time
+      checkCooldown();
+      
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => {
+        setSuccessMessage('');
+        setTxStatus('');
+        setTxHash('');
+      }, 5000);
     } catch (error) {
       console.error('Error buying tokens:', error);
-      setError('Failed to buy tokens. Please try again.');
+      setError(getErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
@@ -115,14 +136,14 @@ const BuyTokens = () => {
               <button
                 type="button"
                 onClick={() => setAmount(prev => (parseFloat(prev) + 0.01).toFixed(2))}
-                className="bg-gray-200 px-2 py-1 rounded-t"
+                className="bg-gray-200 px-2 py-1 rounded-t hover:bg-gray-300"
               >
                 ▲
               </button>
               <button
                 type="button"
                 onClick={() => setAmount(prev => Math.max(0, parseFloat(prev) - 0.01).toFixed(2))}
-                className="bg-gray-200 px-2 py-1 rounded-b"
+                className="bg-gray-200 px-2 py-1 rounded-b hover:bg-gray-300"
               >
                 ▼
               </button>
@@ -139,21 +160,51 @@ const BuyTokens = () => {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           />
         </div>
-        <p className="mb-4">Current token price: {tokenPrice} ETH per {tokenSymbol}</p>
-        <p className="mb-4">Estimated tokens to receive: {estimatedTokens.toFixed(2)} {tokenSymbol}</p>
+        <div className="mb-4 p-4 bg-gray-50 rounded-md">
+          <p className="text-gray-600">Current token price: <span className="font-medium">{tokenPrice} ETH</span> per {tokenSymbol}</p>
+          <p className="text-gray-600">Estimated tokens to receive: <span className="font-medium">{estimatedTokens.toFixed(2)} {tokenSymbol}</span></p>
+        </div>
         {cooldownTimeLeft > 0 && (
-          <p className="mb-4 text-yellow-600">Cooldown period: {formatTime(cooldownTimeLeft)} remaining</p>
+          <div className="mb-4 p-3 bg-yellow-50 rounded-md">
+            <p className="text-yellow-600">Cooldown period: {formatTime(cooldownTimeLeft)} remaining</p>
+          </div>
         )}
         <button
           type="submit"
           disabled={isLoading || cooldownTimeLeft > 0}
-          className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
+          className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition duration-150"
         >
           {isLoading ? 'Processing...' : 'Buy Tokens'}
         </button>
       </form>
-      {error && <p className="mt-4 text-red-500">{error}</p>}
-      {successMessage && <p className="mt-4 text-green-500">{successMessage}</p>}
+      {txStatus && (
+        <div className="mt-4">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
+            <p className="text-blue-600">{txStatus}</p>
+          </div>
+          {txHash && (
+            <a
+              href={`https://etherscan.io/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-500 hover:text-blue-700 mt-2 inline-block"
+            >
+              View transaction on Etherscan ↗
+            </a>
+          )}
+        </div>
+      )}
+      {error && (
+        <div className="mt-4 p-3 bg-red-50 rounded-md">
+          <p className="text-red-600">{error}</p>
+        </div>
+      )}
+      {successMessage && (
+        <div className="mt-4 p-3 bg-green-50 rounded-md">
+          <p className="text-green-600">{successMessage}</p>
+        </div>
+      )}
     </div>
   );
 };

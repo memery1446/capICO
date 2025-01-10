@@ -1,87 +1,144 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useSelector } from 'react-redux';
+import React, { useState, useEffect } from 'react';
 
-const TierInfo = ({ getTiers }) => {
+const App = () => {
   const [tiers, setTiers] = useState([]);
-  const [userInvestment, setUserInvestment] = useState('0');
   const [currentTier, setCurrentTier] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const tokenBalance = useSelector(state => state.ico.tokenBalance);
-  const tokenPrice = useSelector(state => state.ico.tokenPrice);
+  const [progressToNext, setProgressToNext] = useState(0);
+  const [userInvestment, setUserInvestment] = useState(0);
 
-  const fetchTiers = useCallback(async () => {
+  const fetchTiers = async () => {
     try {
-      setIsLoading(true);
-      const fetchedTiers = await getTiers();
+      const fetchedTiers = await getTiers(); // Assume getTiers is a function fetching tier data
+      if (!Array.isArray(fetchedTiers) || fetchedTiers.length === 0) {
+        console.error('Invalid or empty tiers data received');
+        setTiers([]);
+        setCurrentTier(null);
+        return;
+      }
       setTiers(fetchedTiers);
-
-      const investment = parseFloat(tokenBalance) * parseFloat(tokenPrice);
-      setUserInvestment(investment.toFixed(4));
-
-      const currentTierIndex = fetchedTiers.findIndex(
-        (tier, index) => 
-          investment >= parseFloat(tier.minPurchase) && 
-          (index === fetchedTiers.length - 1 || investment < parseFloat(fetchedTiers[index + 1].minPurchase))
-      );
-      setCurrentTier(currentTierIndex);
     } catch (error) {
-      console.error('Error fetching tiers:', error.message);
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching tiers:', error);
+      setTiers([]);
+      setCurrentTier(null);
     }
-  }, [getTiers, tokenBalance, tokenPrice]);
+  };
 
   useEffect(() => {
     fetchTiers();
-  }, [fetchTiers]);
+  }, []);
 
-  if (isLoading) {
-    return <div data-testid="loading">Loading tier information...</div>;
-  }
+  useEffect(() => {
+    if (tiers.length > 0 && userInvestment >= 0) {
+      calculateCurrentTier();
+    }
+  }, [tiers, userInvestment]);
+
+  const calculateCurrentTier = () => {
+    const investment = parseFloat(userInvestment);
+    const currentTierIndex = tiers.findIndex(
+      (tier, index) =>
+        investment >= parseFloat(tier?.minPurchase || 0) &&
+        (index === tiers.length - 1 || investment < parseFloat(tiers[index + 1]?.minPurchase || Infinity))
+    );
+
+    setCurrentTier(currentTierIndex);
+
+    if (currentTierIndex !== null && currentTierIndex < tiers.length - 1) {
+      const nextTierMin = parseFloat(tiers[currentTierIndex + 1]?.minPurchase || 0);
+      const currentTierMin = parseFloat(tiers[currentTierIndex]?.minPurchase || 0);
+      if (nextTierMin > currentTierMin) {
+        const progress = ((investment - currentTierMin) / (nextTierMin - currentTierMin)) * 100;
+        setProgressToNext(Math.min(Math.max(progress, 0), 100));
+      } else {
+        setProgressToNext(0);
+      }
+    } else {
+      setProgressToNext(0);
+    }
+  };
+
+  const handleInvestmentChange = (event) => {
+    setUserInvestment(event.target.value);
+  };
+
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md" data-testid="tier-info">
-      <h2 className="text-2xl font-bold mb-4">Investment Tiers</h2>
-      <p className="mb-4" data-testid="user-investment">Your estimated total investment: {userInvestment} ETH</p>
-      <div className="overflow-x-auto">
-        <table className="min-w-full table-auto">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="px-4 py-2">Tier</th>
-              <th className="px-4 py-2">Min Purchase (ETH)</th>
-              <th className="px-4 py-2">Max Purchase (ETH)</th>
-              <th className="px-4 py-2">Discount (%)</th>
-              <th className="px-4 py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tiers.map((tier, index) => (
-              <tr key={index} className={currentTier === index ? 'bg-green-100' : ''} data-testid={`tier-${index + 1}`}>
-                <td className="border px-4 py-2">{index + 1}</td>
-                <td className="border px-4 py-2">{tier.minPurchase}</td>
-                <td className="border px-4 py-2">{tier.maxPurchase}</td>
-                <td className="border px-4 py-2">{tier.discount}</td>
-                <td className="border px-4 py-2">
-                  {currentTier === index ? 'Current' : currentTier > index ? 'Achieved' : 'Not Reached'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-4">Investment Tiers</h1>
+      <div className="mb-4">
+        <label htmlFor="investment" className="block text-gray-700 font-bold mb-2">
+          Investment (ETH):
+        </label>
+        <input
+          type="number"
+          id="investment"
+          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          value={userInvestment}
+          onChange={handleInvestmentChange}
+        />
       </div>
-      <p className="mt-4 text-sm text-gray-600" data-testid="current-tier">
-        Your current tier: {currentTier !== null ? currentTier + 1 : 'None'}
-      </p>
-      <p className="mt-2 text-sm text-gray-600" data-testid="next-tier-requirement">
-        Next tier requirement: {
-          currentTier !== null && currentTier < tiers.length - 1
-            ? `${tiers[currentTier + 1].minPurchase} ETH`
-            : 'Max tier reached'
-        }
-      </p>
+      <table className="w-full border-collapse">
+        <thead>
+          <tr>
+            <th className="border-b border-gray-200 px-4 py-3 text-left">Tier</th>
+            <th className="border-b border-gray-200 px-4 py-3 text-left">Investment Range (ETH)</th>
+            <th className="border-b border-gray-200 px-4 py-3 text-center">Discount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tiers.map((tier, index) => (
+            <tr key={index}>
+              <td className="border-b border-gray-200 px-4 py-3">{index + 1}</td>
+              <td className="border-b border-gray-200 px-4 py-3">
+                {tier?.minPurchase || '0'} - {tier?.maxPurchase || 'Infinity'} ETH
+              </td>
+              <td className="border-b border-gray-200 px-4 py-3 text-center">
+                {tier?.discount || '0'}%
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {currentTier !== null && (
+        <div className="mt-6">
+          <p>
+            Current Tier: {currentTier + 1} ({tiers[currentTier]?.discount || 0}% discount)
+          </p>
+          <div className="mt-2">
+            <div className="bg-gray-200 rounded-full h-4 w-full">
+              <div
+                className="bg-blue-500 h-4 rounded-full"
+                style={{ width: `${progressToNext}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+      )}
+      {currentTier !== null && currentTier < tiers.length - 1 && (
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <h3 className="font-medium text-blue-900">Next Tier Benefits</h3>
+          <p className="text-blue-700 mt-1">
+            Invest {(parseFloat(tiers[currentTier + 1]?.minPurchase || 0) - parseFloat(userInvestment)).toFixed(4)} more ETH to reach Tier {currentTier + 2} and get {tiers[currentTier + 1]?.discount || 0}% discount!
+          </p>
+        </div>
+      )}
     </div>
   );
 };
 
-export default TierInfo;
+// Dummy getTiers function for demonstration
+const getTiers = async () => {
+  // Replace with your actual API call or data fetching logic
+  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+  return [
+    { minPurchase: 0, maxPurchase: 100, discount: 0 },
+    { minPurchase: 100, maxPurchase: 500, discount: 5 },
+    { minPurchase: 500, maxPurchase: 1000, discount: 10 },
+    { minPurchase: 1000, maxPurchase: Infinity, discount: 15 },
+  ];
+};
+
+export default App;
+
+
 

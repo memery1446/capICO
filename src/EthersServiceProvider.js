@@ -3,7 +3,6 @@ import { ICO_ADDRESS, TOKEN_ADDRESS } from './contracts/addresses';
 import CapICO from './contracts/CapICO.json';
 import ICOToken from './contracts/ICOToken.json';
 
-
 export async function createEthersService(provider) {
   if (!provider) {
     throw new Error('Provider is required');
@@ -18,9 +17,24 @@ export async function createEthersService(provider) {
     icoContract,
     tokenContract,
     
-    // Core balance functionality
+    // Enhanced balance functionality
     balanceOf: async (address) => {
-      return tokenContract.balanceOf(address);
+      try {
+        const [locked, vesting, tokenBalance] = await Promise.all([
+          icoContract.lockedTokens(address),
+          icoContract.vestingSchedules(address),
+          tokenContract.balanceOf(address)
+        ]);
+        
+        const vestingAmount = vesting && vesting.totalAmount ? 
+          vesting.totalAmount.sub(vesting.releasedAmount) : 
+          ethers.BigNumber.from(0);
+          
+        return locked.add(vestingAmount).add(tokenBalance);
+      } catch (error) {
+        console.error('Error in balanceOf:', error);
+        return ethers.BigNumber.from(0);
+      }
     },
 
     // Core purchase functionality

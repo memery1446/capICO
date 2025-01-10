@@ -13,12 +13,13 @@ export const withEthers = (WrappedComponent) => {
           try {
             const service = await createEthersService(provider);
             
-            // Create a facade that matches the interface tests expect
+            // Enhanced facade that includes balance functionality
             const ethersServiceFacade = {
               getNetwork: () => provider.getNetwork(),
               getReferralBonus: () => service.icoContract.referralBonuses(service.getSignerAddress()),
               getCurrentReferrer: () => service.icoContract.referrers(service.getSignerAddress()),
               setReferrer: (referrer) => service.icoContract.setReferrer(referrer),
+              balanceOf: (address) => service.balanceOf(address),
               getTiers: async () => {
                 const tierCount = await service.icoContract.getTierCount();
                 const tiers = [];
@@ -32,7 +33,7 @@ export const withEthers = (WrappedComponent) => {
                 }
                 return tiers;
               },
-              // Add the core service for direct access if needed
+              // Core service access
               _service: service,
             };
 
@@ -53,3 +54,4 @@ export const withEthers = (WrappedComponent) => {
     return <WrappedComponent {...props} ethersService={ethersService} />;
   };
 };
+
