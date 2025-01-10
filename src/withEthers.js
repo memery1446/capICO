@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-import { ICO_ADDRESS } from './contracts/addresses';
-import CapICO from './contracts/CapICO.json';
+import { createEthersService } from './EthersServiceProvider';
 
 export const withEthers = (WrappedComponent) => {
   return (props) => {
@@ -11,31 +10,36 @@ export const withEthers = (WrappedComponent) => {
       const initEthersService = async () => {
         if (typeof window.ethereum !== 'undefined') {
           const provider = new ethers.providers.Web3Provider(window.ethereum);
-          const signer = provider.getSigner();
-          const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
+          try {
+            const service = await createEthersService(provider);
+            
+            // Create a facade that matches the interface tests expect
+            const ethersServiceFacade = {
+              getNetwork: () => provider.getNetwork(),
+              getReferralBonus: () => service.icoContract.referralBonuses(service.getSignerAddress()),
+              getCurrentReferrer: () => service.icoContract.referrers(service.getSignerAddress()),
+              setReferrer: (referrer) => service.icoContract.setReferrer(referrer),
+              getTiers: async () => {
+                const tierCount = await service.icoContract.getTierCount();
+                const tiers = [];
+                for (let i = 0; i < tierCount; i++) {
+                  const tier = await service.icoContract.getTier(i);
+                  tiers.push({
+                    minPurchase: ethers.utils.formatEther(tier.minPurchase),
+                    maxPurchase: ethers.utils.formatEther(tier.maxPurchase),
+                    discount: tier.discount.toString()
+                  });
+                }
+                return tiers;
+              },
+              // Add the core service for direct access if needed
+              _service: service,
+            };
 
-          const ethersService = {
-            getNetwork: () => provider.getNetwork(),
-            getReferralBonus: () => contract.referralBonus(),
-            getCurrentReferrer: () => contract.referrers(signer.getAddress()),
-            setReferrer: (referrer) => contract.setReferrer(referrer),
-            getTiers: async () => {
-              const tierCount = await contract.tierCount();
-              const tiers = [];
-              for (let i = 0; i < tierCount; i++) {
-                const tier = await contract.tiers(i);
-                tiers.push({
-                  minPurchase: ethers.utils.formatEther(tier.minPurchase),
-                  maxPurchase: ethers.utils.formatEther(tier.maxPurchase),
-                  discount: tier.discount.toString()
-                });
-              }
-              return tiers;
-            },
-            // Add any other methods that your components might be using
-          };
-
-          setEthersService(ethersService);
+            setEthersService(ethersServiceFacade);
+          } catch (error) {
+            console.error("Error initializing ethers service:", error);
+          }
         }
       };
 
@@ -49,4 +53,3 @@ export const withEthers = (WrappedComponent) => {
     return <WrappedComponent {...props} ethersService={ethersService} />;
   };
 };
-

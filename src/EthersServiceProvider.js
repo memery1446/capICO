@@ -1,10 +1,9 @@
-// EthersServiceProvider.js
 import { ethers } from 'ethers';
-import { ICO_ADDRESS, TOKEN_ADDRESS } from './contracts/addresses';  // Updated path
-import CapICO from './contracts/CapICO.json';                       // Updated path
-import ICOToken from './contracts/ICOToken.json';                   // Updated path
+import { ICO_ADDRESS, TOKEN_ADDRESS } from './contracts/addresses';
+import CapICO from './contracts/CapICO.json';
+import ICOToken from './contracts/ICOToken.json';
 
-export function createEthersService(provider) {
+export async function createEthersService(provider) {
   if (!provider) {
     throw new Error('Provider is required');
   }
@@ -14,42 +13,41 @@ export function createEthersService(provider) {
   const tokenContract = new ethers.Contract(TOKEN_ADDRESS, ICOToken.abi, signer);
 
   const service = {
+    provider,
     icoContract,
     tokenContract,
     
-    // Core balance functionality
-    async getBalance(address) {
-      try {
-        const [locked, vesting] = await Promise.all([
-          icoContract.lockedTokens(address),
-          icoContract.vestingSchedules(address)
-        ]);
-        
-        const vestingAmount = vesting && vesting.totalAmount ? 
-          vesting.totalAmount : ethers.BigNumber.from(0);
-          
-        return locked.add(vestingAmount);
-      } catch (error) {
-        console.error('Error getting balance:', error);
-        return ethers.BigNumber.from(0);
-      }
+    // Core purchase functionality - simplified to just handle the transaction
+    buyTokens: async (amount) => {
+      const tx = await icoContract.buyTokens({ value: amount });
+      await tx.wait();
+      // Let polling handle the balance update
+      return true;
     },
 
-    // Standard token info
+    // Rest of existing functionality
+    getCurrentTokenPrice: () => icoContract.getCurrentTokenPrice(),
+    calculateTokenAmount: (weiAmount, tokenPrice) => 
+      icoContract.calculateTokenAmount(weiAmount, tokenPrice),
+    getTierCount: () => icoContract.getTierCount(),
+    getTier: (index) => icoContract.getTier(index),
+    cooldownTimeLeft: (address) => icoContract.cooldownTimeLeft(address),
+    setReferrer: (referrer) => icoContract.setReferrer(referrer),
+    claimReferralBonus: () => icoContract.claimReferralBonus(),
+    releaseVestedTokens: () => icoContract.releaseVestedTokens(),
+    unlockTokens: () => icoContract.unlockTokens(),
+    isActive: () => icoContract.isActive(),
+    cooldownEnabled: () => icoContract.cooldownEnabled(),
+    vestingEnabled: () => icoContract.vestingEnabled(),
+    hardCap: () => icoContract.hardCap(),
+    totalRaised: () => icoContract.totalRaised(),
+    icoStartTime: () => icoContract.icoStartTime(),
     name: () => tokenContract.name(),
     symbol: () => tokenContract.symbol(),
     decimals: () => tokenContract.decimals(),
     totalSupply: () => tokenContract.totalSupply(),
-
-    // Purchase functionality
-    buyTokens: async (amount) => {
-      const tx = await icoContract.buyTokens({ value: amount });
-      return tx.wait();
-    }
+    getSignerAddress: () => signer.getAddress(),
   };
-
-  // Add balanceOf as a direct property
-  service.balanceOf = service.getBalance;
 
   return service;
 }

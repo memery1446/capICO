@@ -15,31 +15,36 @@ export function createContractWrapper(provider) {
   // Create base wrapped contract with core ICO functionality
   const baseContract = Object.create(icoContract);
 
-  // Add explicit balanceOf method to the base contract
+  // Add explicit balanceOf method to handle all token balance types
   baseContract.balanceOf = async (address) => {
     try {
-      const [locked, vesting] = await Promise.all([
-        icoContract.lockedTokens(address),
-        icoContract.vestingSchedules(address)
-      ]);
-
+      // Get locked tokens from ICO contract
+      const locked = await icoContract.lockedTokens(address);
+      
+      // Get vesting schedule details
+      const vesting = await icoContract.vestingSchedules(address);
       const vestingAmount = vesting && vesting.totalAmount ? 
-        vesting.totalAmount : ethers.BigNumber.from(0);
+        vesting.totalAmount.sub(vesting.releasedAmount) : // Only count unreleased tokens
+        ethers.BigNumber.from(0);
+      
+      // Get regular token balance from ERC20 contract
+      const tokenBalance = await tokenContract.balanceOf(address);
 
-      return locked.add(vestingAmount);
+      // Sum all balances
+      return locked.add(vestingAmount).add(tokenBalance);
     } catch (error) {
       console.error('Error in balanceOf:', error);
       return ethers.BigNumber.from(0);
     }
   };
 
-  // Add ERC20 methods directly to base contract
+  // Add token contract methods
   ['name', 'symbol', 'decimals', 'totalSupply'].forEach(method => {
     baseContract[method] = (...args) => tokenContract[method](...args);
   });
 
-  // Return proxied contract
-  return new Proxy(baseContract, {
+  // Create proxy handler with proper method forwarding
+  const handler = {
     get(target, prop) {
       // First check if property exists on our wrapped contract
       if (prop in target) {
@@ -48,6 +53,10 @@ export function createContractWrapper(provider) {
 
       // Then check ICO contract
       if (prop in icoContract) {
+        // Special case for balanceOf
+        if (prop === 'balanceOf') {
+          return target.balanceOf;
+        }
         return icoContract[prop];
       }
 
@@ -63,6 +72,12 @@ export function createContractWrapper(provider) {
              prop in icoContract || 
              prop in tokenContract;
     }
-  });
-}
+  };
 
+  // Attach original contracts for direct access if needed
+  baseContract._icoContract = icoContract;
+  baseContract._tokenContract = tokenContract;
+
+  // Return proxied contract
+  return new Proxy(baseContract, handler);
+}
