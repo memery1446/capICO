@@ -9,6 +9,25 @@ const pollingMiddleware = store => next => action => {
       if (typeof window.ethereum !== 'undefined') {
         try {
           const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const accounts = await provider.listAccounts();
+          
+          // Only proceed if we have a connected account
+          if (accounts.length === 0) {
+            store.dispatch(updateICOInfo({
+              isActive: false,
+              cooldownEnabled: false,
+              vestingEnabled: false,
+              totalRaised: "0",
+              hardCap: "0",
+              tokenPrice: "0",
+              tokenName: "",
+              tokenSymbol: "",
+              tokenBalance: "0",
+              totalSupply: "0",
+            }));
+            return;
+          }
+
           const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, provider);
 
           const [
@@ -42,7 +61,7 @@ const pollingMiddleware = store => next => action => {
           ]);
 
           const signer = provider.getSigner();
-          const address = await signer.getAddress();
+          const address = accounts[0];
           const tokenBalance = await tokenContract.balanceOf(address);
 
           store.dispatch(updateICOInfo({
@@ -59,7 +78,6 @@ const pollingMiddleware = store => next => action => {
           }));
         } catch (error) {
           console.error('Polling error:', error);
-          // Dispatch an error action here if needed
         }
       }
     }, 15000); // Poll every 15 seconds

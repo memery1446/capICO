@@ -1,58 +1,56 @@
-import React, { useState, useEffect } from 'react';
+// EthersServiceProvider.js
 import { ethers } from 'ethers';
-import { ICO_ADDRESS } from './contracts/addresses';
-import CapICO from './contracts/CapICO.json';
+import { ICO_ADDRESS, TOKEN_ADDRESS } from './contracts/addresses';  // Updated path
+import CapICO from './contracts/CapICO.json';                       // Updated path
+import ICOToken from './contracts/ICOToken.json';                   // Updated path
 
-export const EthersServiceProvider = ({ children }) => {
-  const [ethersService, setEthersService] = useState(null);
-
-  useEffect(() => {
-    const initEthersService = async () => {
-      if (typeof window.ethereum !== 'undefined') {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
-
-        const ethersService = {
-          contract,
-          provider,
-          signer,
-          getNetwork: () => provider.getNetwork(),
-          getReferralBonus: () => contract.referralBonus(),
-          getCurrentReferrer: () => contract.referrers(signer.getAddress()),
-          setReferrer: (referrer) => contract.setReferrer(referrer),
-          getTiers: async () => {
-            const tierCount = await contract.tierCount();
-            const tiers = [];
-            for (let i = 0; i < tierCount; i++) {
-              const tier = await contract.tiers(i);
-              tiers.push({
-                minPurchase: ethers.utils.formatEther(tier.minPurchase),
-                maxPurchase: ethers.utils.formatEther(tier.maxPurchase),
-                discount: tier.discount.toString()
-              });
-            }
-            return tiers;
-          },
-          // Add any other methods that your components might be using
-        };
-
-        setEthersService(ethersService);
-      }
-    };
-
-    initEthersService();
-  }, []);
-
-  if (!ethersService) {
-    return <div>Loading ethers service...</div>;
+export function createEthersService(provider) {
+  if (!provider) {
+    throw new Error('Provider is required');
   }
 
-  return React.Children.map(children, child => {
-    if (React.isValidElement(child)) {
-      return React.cloneElement(child, { ...child.props, ethersService });
+  const signer = provider.getSigner();
+  const icoContract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
+  const tokenContract = new ethers.Contract(TOKEN_ADDRESS, ICOToken.abi, signer);
+
+  const service = {
+    icoContract,
+    tokenContract,
+    
+    // Core balance functionality
+    async getBalance(address) {
+      try {
+        const [locked, vesting] = await Promise.all([
+          icoContract.lockedTokens(address),
+          icoContract.vestingSchedules(address)
+        ]);
+        
+        const vestingAmount = vesting && vesting.totalAmount ? 
+          vesting.totalAmount : ethers.BigNumber.from(0);
+          
+        return locked.add(vestingAmount);
+      } catch (error) {
+        console.error('Error getting balance:', error);
+        return ethers.BigNumber.from(0);
+      }
+    },
+
+    // Standard token info
+    name: () => tokenContract.name(),
+    symbol: () => tokenContract.symbol(),
+    decimals: () => tokenContract.decimals(),
+    totalSupply: () => tokenContract.totalSupply(),
+
+    // Purchase functionality
+    buyTokens: async (amount) => {
+      const tx = await icoContract.buyTokens({ value: amount });
+      return tx.wait();
     }
-    return child;
-  });
-};
+  };
+
+  // Add balanceOf as a direct property
+  service.balanceOf = service.getBalance;
+
+  return service;
+}
 
