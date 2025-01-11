@@ -10,7 +10,6 @@ import TierInfo from './components/TierInfo';
 import TransactionHistory from './components/TransactionHistory';
 import OwnerActions from './components/OwnerActions';
 import UserStatus from './components/UserStatus';
-import VestingInfo from './components/VestingInfo';
 import WalletConnection from './components/WalletConnection';
 import GlobalError from './components/GlobalError';
 import { ethers } from 'ethers';
@@ -20,7 +19,6 @@ import ICOToken from './contracts/ICOToken.json';
 import { createEthersService } from './EthersServiceProvider';
 import { updateICOInfo } from './store/icoSlice';
 import { setGlobalError } from './store/errorSlice';
-import { Card } from './components/ui/Card';
 import { withEthers } from './withEthers';
 
 function AppContent() {
@@ -162,8 +160,8 @@ function AppContent() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
       </div>
     );
   }
@@ -171,58 +169,87 @@ function AppContent() {
   const ethersService = getEthersService();
 
   return (
-    <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8 flex flex-col justify-center sm:py-12">
-      <div className="relative py-3 sm:max-w-xl md:max-w-2xl lg:max-w-4xl xl:max-w-6xl mx-auto">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-light-blue-500 shadow-lg transform -skew-y-6 sm:skew-y-0 sm:-rotate-6 sm:rounded-3xl"></div>
-        <div className="relative px-4 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
-          <h1 className="text-4xl font-bold mb-8 text-center text-gray-800">CapICO Dashboard</h1>
-          <GlobalError />
-          <Card className="mb-8">
-            <WalletConnection />
-          </Card>
-          {!isWalletConnected ? (
-            <Card className="p-6 text-center text-gray-600 text-xl">
-              Please connect your wallet to access the dashboard
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="p-6">
-                <UserStatus />
-              </Card>
-              <Card className="p-6">
-                <ICOStatus />
-              </Card>
-              {isOwner && (
-                <Card className="p-6 md:col-span-2">
-                  <OwnerActions />
-                </Card>
-              )}
-              <Card className="p-6">
-                <WhitelistStatus />
-              </Card>
-              <Card className="p-6">
-                <BuyTokens buyTokens={ethService.buyTokens} />
-              </Card>
-              <Card className="p-6">
-                <TierInfo getTiers={getTiers} />
-              </Card>
-              <Card className="p-6">
-                <TokenVestingDashboard />
-              </Card>
-              <Card className="p-6">
-                <VestingInfo />
-              </Card>
-              {ethersService && (
-                <Card className="p-6">
-                  <ReferralSystem ethersService={ethersService} />
-                </Card>
-              )}
-              <Card className="p-6 md:col-span-2">
-                <TransactionHistory />
-              </Card>
-            </div>
-          )}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="bg-white rounded-xl shadow-xl p-6 backdrop-blur-lg bg-opacity-90">
+            <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              CapICO Dashboard
+            </h1>
+            <p className="text-gray-600 text-center mt-2">
+              Manage your ICO participation and token investments
+            </p>
+          </div>
         </div>
+
+        <GlobalError />
+        
+        {/* Wallet Connection Card */}
+        <div className="mb-8">
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <WalletConnection />
+          </div>
+        </div>
+
+        {!isWalletConnected ? (
+          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+            <div className="text-2xl text-gray-700 font-semibold">
+              Please connect your wallet to access the dashboard
+            </div>
+            <p className="text-gray-500 mt-2">
+              Connect your Web3 wallet to view your ICO participation status and manage your tokens
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Main Status Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <UserStatus />
+              </div>
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <ICOStatus />
+              </div>
+            </div>
+
+            {/* User Interactive Features */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <BuyTokens buyTokens={ethService.buyTokens} />
+              </div>
+              {ethersService && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <ReferralSystem ethersService={ethersService} />
+                </div>
+              )}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <WhitelistStatus />
+              </div>
+            </div>
+
+            {/* Information and Status Components */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <TierInfo getTiers={getTiers} />
+              </div>
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <TokenVestingDashboard />
+              </div>
+              {isOwner && (
+                <div className="bg-gray-50 rounded-xl shadow-lg p-6">
+                  <h2 className="text-xl font-semibold mb-4 text-gray-700">Owner Administration</h2>
+                  <OwnerActions />
+                </div>
+              )}
+            </div>
+
+            {/* Transaction History (Full Width) */}
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <TransactionHistory />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

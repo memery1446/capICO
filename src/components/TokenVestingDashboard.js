@@ -6,6 +6,7 @@ import CapICO from '../contracts/CapICO.json';
 import { updateICOInfo } from '../store/icoSlice';
 
 const TokenVestingDashboard = () => {
+  // Keep all existing state and hooks
   const [vestingSchedule, setVestingSchedule] = useState(null);
   const [lockedTokens, setLockedTokens] = useState('0');
   const [error, setError] = useState('');
@@ -16,6 +17,7 @@ const TokenVestingDashboard = () => {
   const tokenSymbol = useSelector((state) => state.ico.tokenSymbol);
   const dispatch = useDispatch();
 
+  // Keep all existing helper functions
   const fetchVestingAndLockupInfo = useCallback(async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
@@ -40,10 +42,9 @@ const TokenVestingDashboard = () => {
 
         setLockedTokens(ethers.utils.formatEther(locked));
 
-        // Calculate and set countdowns
         const now = Math.floor(Date.now() / 1000);
         const cliffEnd = icoStartTime.toNumber() + schedule.cliff.toNumber();
-        const lockupEnd = icoStartTime.toNumber() + 180 * 24 * 60 * 60; // 180 days in seconds
+        const lockupEnd = icoStartTime.toNumber() + 180 * 24 * 60 * 60;
 
         if (now < cliffEnd) {
           setCliffCountdown(formatCountdown(cliffEnd - now));
@@ -64,9 +65,10 @@ const TokenVestingDashboard = () => {
     }
   }, []);
 
+  // Keep all existing effects
   useEffect(() => {
     fetchVestingAndLockupInfo();
-    const interval = setInterval(fetchVestingAndLockupInfo, 30000); // Refresh every 30 seconds
+    const interval = setInterval(fetchVestingAndLockupInfo, 30000);
     return () => clearInterval(interval);
   }, [fetchVestingAndLockupInfo]);
 
@@ -84,6 +86,7 @@ const TokenVestingDashboard = () => {
     return Math.min(100, (elapsedTime / vestingSchedule.duration) * 100);
   };
 
+  // Keep all existing token management functions
   const releaseTokens = useCallback(async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
@@ -129,56 +132,127 @@ const TokenVestingDashboard = () => {
   }, [dispatch, fetchVestingAndLockupInfo]);
 
   if (error) {
-    return <div className="text-red-500">{error}</div>;
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="text-red-500 p-4 rounded-md bg-red-50">{error}</div>
+      </div>
+    );
   }
 
-  if (!vestingSchedule) {
-    return <div>Loading vesting and lockup information...</div>;
+  if (!vestingSchedule || vestingSchedule.totalAmount === '0') {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="text-center p-8">
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">No Active Vesting Schedule</h2>
+          <p className="text-gray-500">You don't have any tokens currently in vesting.</p>
+        </div>
+      </div>
+    );
   }
 
   const vestedPercentage = calculateVestedPercentage();
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-4">Token Vesting and Lockup Dashboard</h2>
-      <div className="mb-4">
-        <h3 className="text-xl font-semibold mb-2">Vesting Schedule</h3>
-        <p>Total Vested Amount: {vestingSchedule.totalAmount} {tokenSymbol}</p>
-        <p>Released Amount: {vestingSchedule.releasedAmount} {tokenSymbol}</p>
-        <p>Vesting Start Date: {vestingSchedule.startTime.toLocaleDateString()}</p>
-        <p>Vesting Duration: {vestingSchedule.duration / (24 * 60 * 60)} days</p>
-        <p>Cliff Period: {vestingSchedule.cliff / (24 * 60 * 60)} days</p>
-        <p>Cliff Countdown: {cliffCountdown}</p>
+    <div className="bg-white p-6 rounded-lg shadow-md space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800">Token Vesting Dashboard</h2>
+        <div className="text-sm text-gray-500">
+          Auto-updates every 30s
+        </div>
       </div>
-      <div className="mb-4">
-        <div className="bg-gray-200 h-4 rounded-full">
+
+      {/* Progress Visualization */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="mb-2 flex justify-between text-sm text-gray-600">
+          <span>Vesting Progress</span>
+          <span>{vestedPercentage.toFixed(2)}%</span>
+        </div>
+        <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
           <div
-            className="bg-blue-500 h-4 rounded-full"
+            className="h-full bg-blue-500 rounded-full transition-all duration-500 ease-in-out"
             style={{ width: `${vestedPercentage}%` }}
           />
         </div>
-        <p className="text-center mt-2">{vestedPercentage.toFixed(2)}% Vested</p>
       </div>
-      <div className="mb-4">
-        <h3 className="text-xl font-semibold mb-2">Locked Tokens</h3>
-        <p>Locked Amount: {lockedTokens} {tokenSymbol}</p>
-        <p>Lockup Countdown: {lockupCountdown}</p>
+
+      {/* Token Information */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold mb-3 text-gray-700">Vesting Details</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Total Amount:</span>
+              <span className="font-medium">{vestingSchedule.totalAmount} {tokenSymbol}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Released Amount:</span>
+              <span className="font-medium">{vestingSchedule.releasedAmount} {tokenSymbol}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Start Date:</span>
+              <span className="font-medium">{vestingSchedule.startTime.toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold mb-3 text-gray-700">Time Information</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Vesting Duration:</span>
+              <span className="font-medium">{vestingSchedule.duration / (24 * 60 * 60)} days</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Cliff Period:</span>
+              <span className="font-medium">{vestingSchedule.cliff / (24 * 60 * 60)} days</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Cliff Status:</span>
+              <span className={cliffCountdown === 'Cliff period ended' ? 'text-green-600' : 'text-yellow-600'}>
+                {cliffCountdown}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="flex space-x-4">
+
+      {/* Locked Tokens Section */}
+      {lockedTokens !== '0' && (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <h3 className="text-lg font-semibold mb-3 text-gray-700">Locked Tokens</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Locked Amount:</span>
+              <span className="font-medium">{lockedTokens} {tokenSymbol}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Lockup Status:</span>
+              <span className={lockupCountdown === 'Lockup period ended' ? 'text-green-600' : 'text-yellow-600'}>
+                {lockupCountdown}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-4">
         <button 
           onClick={releaseTokens}
           disabled={isReleasing || vestedPercentage === 0}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+          className="flex-1 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed transition duration-150"
         >
           {isReleasing ? 'Releasing...' : 'Release Vested Tokens'}
         </button>
-        <button 
-          onClick={unlockTokens}
-          disabled={isUnlocking || lockedTokens === '0'}
-          className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-        >
-          {isUnlocking ? 'Unlocking...' : 'Unlock Tokens'}
-        </button>
+        {lockedTokens !== '0' && (
+          <button 
+            onClick={unlockTokens}
+            disabled={isUnlocking || lockupCountdown !== 'Lockup period ended'}
+            className="flex-1 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed transition duration-150"
+          >
+            {isUnlocking ? 'Unlocking...' : 'Unlock Tokens'}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { ICO_ADDRESS } from '../contracts/addresses';
 import CapICO from '../contracts/CapICO.json';
 import { updateICOInfo } from '../store/icoSlice';
 
+// Keep all existing helper functions
 const formatTime = (seconds) => {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
@@ -27,6 +28,7 @@ const getErrorMessage = (error) => {
 };
 
 const BuyTokens = () => {
+  // Keep all existing state and hooks
   const [amount, setAmount] = useState('');
   const [referrer, setReferrer] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +41,7 @@ const BuyTokens = () => {
   const tokenPrice = useSelector((state) => state.ico.tokenPrice);
   const dispatch = useDispatch();
 
+  // Keep existing cooldown check logic
   const checkCooldown = useCallback(async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
@@ -67,6 +70,7 @@ const BuyTokens = () => {
     return () => clearInterval(interval);
   }, [checkCooldown]);
 
+  // Keep existing handleBuy logic
   const handleBuy = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -99,7 +103,6 @@ const BuyTokens = () => {
 
       checkCooldown();
       
-      // Auto-clear success message after 5 seconds
       setTimeout(() => {
         setSuccessMessage('');
         setTxStatus('');
@@ -113,6 +116,19 @@ const BuyTokens = () => {
     }
   };
 
+  const handleAmountChange = (e) => {
+    const value = e.target.value;
+    if (value === '' || (!isNaN(value) && parseFloat(value) >= 0)) {
+      setAmount(value);
+    }
+  };
+
+  const adjustAmount = (delta) => {
+    const currentAmount = parseFloat(amount || '0');
+    const newAmount = Math.max(0, currentAmount + delta);
+    setAmount(newAmount.toFixed(2));
+  };
+
   const estimatedTokens = amount && tokenPrice ? parseFloat(formatAmount(amount)) / parseFloat(tokenPrice) : 0;
 
   return (
@@ -120,38 +136,43 @@ const BuyTokens = () => {
       <h2 className="text-2xl font-bold mb-4">Buy Tokens</h2>
       <form onSubmit={handleBuy}>
         <div className="mb-4">
-          <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">Amount of ETH to spend</label>
-          <div className="flex items-center">
+          <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
+            Amount of ETH to spend
+          </label>
+          <div className="relative flex items-center">
             <input
               type="number"
               id="amount"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={handleAmountChange}
               step="0.01"
               min="0"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              className="block w-full rounded-md border-gray-300 pr-20 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
               required
             />
-            <div className="flex flex-col ml-2">
+            <div className="absolute right-0 mr-2 flex">
               <button
                 type="button"
-                onClick={() => setAmount(prev => (parseFloat(prev) + 0.01).toFixed(2))}
-                className="bg-gray-200 px-2 py-1 rounded-t hover:bg-gray-300"
+                onClick={() => adjustAmount(-0.01)}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none px-2 py-1 transition-colors"
               >
-                ▲
+                -
               </button>
               <button
                 type="button"
-                onClick={() => setAmount(prev => Math.max(0, parseFloat(prev) - 0.01).toFixed(2))}
-                className="bg-gray-200 px-2 py-1 rounded-b hover:bg-gray-300"
+                onClick={() => adjustAmount(0.01)}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none px-2 py-1 transition-colors"
               >
-                ▼
+                +
               </button>
             </div>
           </div>
         </div>
+
         <div className="mb-4">
-          <label htmlFor="referrer" className="block text-sm font-medium text-gray-700">Referrer Address (optional)</label>
+          <label htmlFor="referrer" className="block text-sm font-medium text-gray-700">
+            Referrer Address (optional)
+          </label>
           <input
             type="text"
             id="referrer"
@@ -160,23 +181,31 @@ const BuyTokens = () => {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           />
         </div>
+
         <div className="mb-4 p-4 bg-gray-50 rounded-md">
-          <p className="text-gray-600">Current token price: <span className="font-medium">{tokenPrice} ETH</span> per {tokenSymbol}</p>
-          <p className="text-gray-600">Estimated tokens to receive: <span className="font-medium">{estimatedTokens.toFixed(2)} {tokenSymbol}</span></p>
+          <p className="text-gray-600">
+            Current token price: <span className="font-medium">{tokenPrice} ETH</span> per {tokenSymbol}
+          </p>
+          <p className="text-gray-600">
+            Estimated tokens to receive: <span className="font-medium">{estimatedTokens.toFixed(2)} {tokenSymbol}</span>
+          </p>
         </div>
+
         {cooldownTimeLeft > 0 && (
           <div className="mb-4 p-3 bg-yellow-50 rounded-md">
             <p className="text-yellow-600">Cooldown period: {formatTime(cooldownTimeLeft)} remaining</p>
           </div>
         )}
+
         <button
           type="submit"
           disabled={isLoading || cooldownTimeLeft > 0}
-          className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 transition duration-150"
+          className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50 disabled:cursor-not-allowed transition duration-150"
         >
           {isLoading ? 'Processing...' : 'Buy Tokens'}
         </button>
       </form>
+
       {txStatus && (
         <div className="mt-4">
           <div className="flex items-center space-x-2">
@@ -195,11 +224,13 @@ const BuyTokens = () => {
           )}
         </div>
       )}
+
       {error && (
         <div className="mt-4 p-3 bg-red-50 rounded-md">
           <p className="text-red-600">{error}</p>
         </div>
       )}
+
       {successMessage && (
         <div className="mt-4 p-3 bg-green-50 rounded-md">
           <p className="text-green-600">{successMessage}</p>
