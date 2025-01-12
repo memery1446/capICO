@@ -88,6 +88,12 @@ console.error = (...args) => {
   if (args[0].includes('Error fetching referral info:')) {
     return;
   }
+    if (args[0].includes('Error fetching referral info:')) {
+    return;
+  }
+  if (args[0].includes('Error checking wallet connection:')) {
+    return;
+  }
   originalError.apply(console, args);
 };
 

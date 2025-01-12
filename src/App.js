@@ -175,7 +175,7 @@ function AppContent() {
         <div className="mb-8">
           <div className="bg-white rounded-xl shadow-xl p-6 backdrop-blur-lg bg-opacity-90">
             <h1 className="text-4xl font-bold text-center style={{ color: '#0A1172' }}">
-              CapICO Dashboard
+              Crowdsale ICO Dashboard
             </h1>
             <p className="text-gray-600 text-center mt-2">
               Manage your ICO participation and token investments

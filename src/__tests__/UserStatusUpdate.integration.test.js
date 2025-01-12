@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { act } from 'react-dom/test-utils';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
 import UserStatus from '../components/UserStatus';
@@ -12,27 +13,27 @@ import { ethers } from 'ethers';
 jest.mock('ethers');
 jest.mock('../components/TierInfo', () => ({
   __esModule: true,
-  default: function MockTierInfo({ getTiers, isWalletConnected }) {
+  default: function MockTierInfo({ getTiers, isWalletConnected, tokenBalance, tokenPrice }) {
     if (!isWalletConnected) return null;
     
-    // Simulate the tier calculation synchronously
     const tiers = [
-      { minPurchase: '100', maxPurchase: '1000', discount: 5 },
-      { minPurchase: '1001', maxPurchase: '5000', discount: 10 },
+      { minPurchase: '0', maxPurchase: '999', discount: 5 },
+      { minPurchase: '1000', maxPurchase: '10000', discount: 10 },
     ];
-    const investmentAmount = 10000 * 0.1; // Assuming 10000 tokens at 0.1 ETH each
-    const tierIndex = tiers.findIndex(tier => 
-      investmentAmount >= parseFloat(tier.minPurchase) && 
-      investmentAmount <= parseFloat(tier.maxPurchase)
-    );
-    const currentTier = tierIndex !== -1 ? tierIndex : tiers.length - 1;
-    const discount = tiers[currentTier].discount / 100;
+    const investmentAmount = parseFloat(tokenBalance) * parseFloat(tokenPrice);
+    const currentTier = tiers.reduce((acc, tier, index) => {
+      if (investmentAmount >= parseFloat(tier.minPurchase) && investmentAmount <= parseFloat(tier.maxPurchase)) {
+        return index + 1;
+      }
+      return acc;
+    }, 1);
+    const discount = tiers[currentTier - 1].discount / 100;
     const discountedInvestment = (investmentAmount * (1 - discount)).toFixed(4);
 
     return (
       <div data-testid="tier-info">
         <p data-testid="user-investment">Your estimated total investment: {discountedInvestment} ETH</p>
-        <p data-testid="current-tier">Your current tier: {currentTier + 1}</p>
+        <p data-testid="current-tier">Your current tier: {currentTier}</p>
       </div>
     );
   }
@@ -87,10 +88,12 @@ describe('User Status Update Integration', () => {
         <UserStatus />
         <TierInfo 
           getTiers={() => Promise.resolve([
-            { minPurchase: '100', maxPurchase: '1000', discount: 5 },
-            { minPurchase: '1001', maxPurchase: '5000', discount: 10 },
+            { minPurchase: '0', maxPurchase: '999', discount: 5 },
+            { minPurchase: '1000', maxPurchase: '10000', discount: 10 },
           ])}
           isWalletConnected={customStore.getState().ico.isWalletConnected}
+          tokenBalance={customStore.getState().ico.tokenBalance}
+          tokenPrice={customStore.getState().ico.tokenPrice}
         />
         <VestingInfo />
         <BuyTokens />
@@ -212,45 +215,89 @@ describe('User Status Update Integration', () => {
     });
   });
 
-// it('should calculate investment amount correctly with tier discounts', async () => {
-//     const initialStore = mockStore({
-//       ico: {
-//         tokenBalance: '10000',
-//         tokenPrice: '0.1',
-//         vestingSchedule: {
-//           totalAmount: 1000000,
-//           releasedAmount: 250000,
-//           startTime: Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60,
-//           duration: 365 * 24 * 60 * 60,
-//           cliff: 90 * 24 * 60 * 60,
-//         },
-//         isWhitelisted: true,
-//         isWalletConnected: true
-//       },
-//     });
+  it('should calculate investment amount correctly with tier discounts', async () => {
+    await act(async () => {
+      renderComponents();
+    });
 
-//     await act(async () => {
-//       renderComponents(initialStore);
-//     });
+    await waitFor(() => {
+      const tierInfo = screen.getByTestId('tier-info');
+      expect(tierInfo).toBeInTheDocument();
+    });
 
-//     // Wait for and verify tier info display
-//     await waitFor(() => {
-//       const tierInfo = screen.getByTestId('tier-info');
-//       expect(tierInfo).toBeInTheDocument();
-//     });
+    const currentTierElement = screen.getByTestId('current-tier');
+    expect(currentTierElement).toHaveTextContent('Your current tier: 2');
 
-//     // Verify tier calculation
-//     const currentTierElement = screen.getByTestId('current-tier');
-//     expect(currentTierElement).toHaveTextContent('Your current tier: 2');
+    const userInvestmentElement = screen.getByTestId('user-investment');
+    expect(userInvestmentElement).toHaveTextContent('Your estimated total investment: 900.0000 ETH');
+  });
 
-//     // Verify investment calculation with discount
-//     const userInvestmentElement = screen.getByTestId('user-investment');
-//     expect(userInvestmentElement).toHaveTextContent('Your estimated total investment: 900.0000 ETH');
-//   });
+  it('should handle investment updates with tier calculation', async () => {
+    const initialStore = mockStore({
+      ico: {
+        tokenBalance: '500',
+        tokenPrice: '0.1',
+        vestingSchedule: {
+          totalAmount: 1000000,
+          releasedAmount: 250000,
+          startTime: Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60,
+          duration: 365 * 24 * 60 * 60,
+          cliff: 90 * 24 * 60 * 60,
+        },
+        isWhitelisted: true,
+        isWalletConnected: true
+      },
+    });
 
-  // Temporarily commented out while fixing other test
-// it('should handle investment updates with tier calculation', async () => {
-// });
+    const { rerender } = renderComponents(initialStore);
+
+    await waitFor(() => {
+      const tierInfo = screen.getByTestId('tier-info');
+      expect(tierInfo).toBeInTheDocument();
+    });
+
+    let currentTierElement = screen.getByTestId('current-tier');
+    let userInvestmentElement = screen.getByTestId('user-investment');
+
+    expect(currentTierElement).toHaveTextContent('Your current tier: 1');
+    expect(userInvestmentElement).toHaveTextContent('Your estimated total investment: 47.5000 ETH');
+
+    const updatedStore = mockStore({
+      ...initialStore.getState(),
+      ico: {
+        ...initialStore.getState().ico,
+        tokenBalance: '15000',
+      },
+    });
+
+    await act(async () => {
+      rerender(
+        <Provider store={updatedStore}>
+          <UserStatus />
+          <TierInfo 
+            getTiers={() => Promise.resolve([
+              { minPurchase: '0', maxPurchase: '999', discount: 5 },
+              { minPurchase: '1000', maxPurchase: '10000', discount: 10 },
+            ])}
+            isWalletConnected={updatedStore.getState().ico.isWalletConnected}
+            tokenBalance={updatedStore.getState().ico.tokenBalance}
+            tokenPrice={updatedStore.getState().ico.tokenPrice}
+          />
+          <VestingInfo />
+          <BuyTokens />
+          <WhitelistStatus />
+        </Provider>
+      );
+    });
+
+    await waitFor(() => {
+      currentTierElement = screen.getByTestId('current-tier');
+      userInvestmentElement = screen.getByTestId('user-investment');
+    });
+
+    expect(currentTierElement).toHaveTextContent('Your current tier: 2');
+    expect(userInvestmentElement).toHaveTextContent('Your estimated total investment: 1350.0000 ETH');
+  });
 
   it('should update display when token price changes', async () => {
     const { rerender } = renderComponents();
