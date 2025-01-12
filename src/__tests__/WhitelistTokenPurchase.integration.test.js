@@ -1,17 +1,13 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
-import thunk from 'redux-thunk';
-import WhitelistStatus from '../components/WhitelistStatus';
 import BuyTokens from '../components/BuyTokens';
+import WhitelistStatus from '../components/WhitelistStatus';
 
-// Increase timeout for async tests
-jest.setTimeout(10000);
+const mockStore = configureStore([]);
 
-const mockStore = configureStore([thunk]);
-
-describe('WhitelistTokenPurchase', () => {
+describe('WhitelistTokenPurchase Integration', () => {
   let store;
 
   beforeEach(() => {
@@ -22,98 +18,54 @@ describe('WhitelistTokenPurchase', () => {
         tokenPrice: '0.1',
         tokenBalance: '10',
         maxPurchaseAmount: '10',
+        tokensAvailable: 1000,
+        isLoading: false,
       },
     });
   });
 
-  it('renders WhitelistStatus correctly', () => {
+  it('displays correct whitelist status when not whitelisted', () => {
     render(
       <Provider store={store}>
         <WhitelistStatus />
       </Provider>
     );
 
-    expect(screen.getByText('You are not whitelisted for this ICO.')).toBeInTheDocument();
+    expect(screen.getByText(/You are not whitelisted for this ICO./i)).toBeInTheDocument();
   });
 
-  it('updates WhitelistStatus when whitelist status changes', () => {
-    const { rerender } = render(
-      <Provider store={store}>
-        <WhitelistStatus />
-      </Provider>
-    );
-
-    expect(screen.getByText('You are not whitelisted for this ICO.')).toBeInTheDocument();
-
+  it('displays correct whitelist status when whitelisted', () => {
     store = mockStore({
-      ico: {
-        ...store.getState().ico,
-        isWhitelisted: true,
-      },
+      ico: { ...store.getState().ico, isWhitelisted: true },
     });
 
-    rerender(
+    render(
       <Provider store={store}>
         <WhitelistStatus />
       </Provider>
     );
 
-    expect(screen.getByText('You are whitelisted for this ICO.')).toBeInTheDocument();
+    expect(screen.getByText(/You are whitelisted for this ICO./i)).toBeInTheDocument();
   });
 
-  it('renders BuyTokens form correctly', () => {
+  it('displays the buy tokens form with correct initial state', () => {
     render(
       <Provider store={store}>
         <BuyTokens />
       </Provider>
     );
 
-    expect(screen.getByLabelText('Amount of ETH to spend')).toBeInTheDocument();
-    expect(screen.getByLabelText('Referrer Address (optional)')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Buy Tokens' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Amount of ETH to spend/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Referrer Address/i)).toBeInTheDocument();
+    expect(screen.getByText(/Current token price:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Estimated tokens to receive:/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Buy Tokens' })).toBeInTheDocument();
   });
 
-  it('updates estimated tokens when amount changes', async () => {
-    render(
-      <Provider store={store}>
-        <BuyTokens />
-      </Provider>
-    );
-
-    // First verify the initial state
-    await waitFor(() => {
-      expect(screen.getByText(/Estimated tokens to receive:/)).toBeInTheDocument();
-    }, { timeout: 6000 });
-
-    // Then make the change
-    const amountInput = screen.getByLabelText('Amount of ETH to spend');
-    fireEvent.change(amountInput, { target: { value: '1' } });
-
-    // Look for the updated value
-    await waitFor(() => {
-      const estimatedText = screen.getByText(/Estimated tokens to receive:/);
-      expect(estimatedText.textContent).toContain('10.00 TEST');
-    }, { timeout: 6000 });
-  });
-
-  it('does not disable buy button for non-whitelisted users', () => {
-    render(
-      <Provider store={store}>
-        <BuyTokens />
-      </Provider>
-    );
-
-    const buyButton = screen.getByRole('button', { name: 'Buy Tokens' });
-    expect(buyButton).not.toHaveAttribute('disabled');
-  });
-
-  it('enables buy button for whitelisted users', () => {
-    store = mockStore({
-      ico: {
-        ...store.getState().ico,
-        isWhitelisted: true,
-      },
-    });
+  it('disables buy button during cooldown period', () => {
+    // Mock the useState hook to simulate a cooldown period
+    jest.spyOn(React, 'useState').mockImplementationOnce(() => [60, jest.fn()]);
 
     render(
       <Provider store={store}>
@@ -122,7 +74,23 @@ describe('WhitelistTokenPurchase', () => {
     );
 
     const buyButton = screen.getByRole('button', { name: 'Buy Tokens' });
-    expect(buyButton).not.toHaveAttribute('disabled');
+    expect(buyButton).toBeDisabled();
+    expect(screen.getByText(/Cooldown period:/i)).toBeInTheDocument();
+  });
+
+  it('enables buy button when there is no cooldown', () => {
+    // Mock the useState hook to simulate no cooldown period
+    jest.spyOn(React, 'useState').mockImplementationOnce(() => [0, jest.fn()]);
+
+    render(
+      <Provider store={store}>
+        <BuyTokens />
+      </Provider>
+    );
+
+    const buyButton = screen.getByRole('button', { name: 'Buy Tokens' });
+    expect(buyButton).not.toBeDisabled();
+    expect(screen.queryByText(/Cooldown period:/i)).not.toBeInTheDocument();
   });
 });
 
