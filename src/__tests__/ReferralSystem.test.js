@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
@@ -33,11 +33,13 @@ describe('ReferralSystem', () => {
   });
 
   it('renders correctly when wallet is connected', async () => {
-    render(
-      <Provider store={store}>
-        <ReferralSystem ethersService={mockEthersService} />
-      </Provider>
-    );
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <ReferralSystem ethersService={mockEthersService} />
+        </Provider>
+      );
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Referral System')).toBeInTheDocument();
@@ -58,28 +60,38 @@ describe('ReferralSystem', () => {
       },
     });
 
-    render(
-      <Provider store={store}>
-        <ReferralSystem ethersService={mockEthersService} />
-      </Provider>
-    );
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <ReferralSystem ethersService={mockEthersService} />
+        </Provider>
+      );
+    });
 
     expect(screen.getByText('Referral System')).toBeInTheDocument();
     expect(screen.getByText('Please connect your wallet to view and interact with the referral system.')).toBeInTheDocument();
   });
 
   it('allows setting a new referrer', async () => {
-    render(
-      <Provider store={store}>
-        <ReferralSystem ethersService={mockEthersService} />
-      </Provider>
-    );
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <ReferralSystem ethersService={mockEthersService} />
+        </Provider>
+      );
+    });
 
     const input = screen.getByPlaceholderText('Enter referrer address');
-    fireEvent.change(input, { target: { value: '0x1111111111111111111111111111111111111111' } });
+    
+    await act(async () => {
+      fireEvent.change(input, { target: { value: '0x1111111111111111111111111111111111111111' } });
+    });
 
     const setReferrerButton = screen.getByText('Set Referrer');
-    fireEvent.click(setReferrerButton);
+    
+    await act(async () => {
+      fireEvent.click(setReferrerButton);
+    });
 
     await waitFor(() => {
       expect(mockEthersService.setReferrer).toHaveBeenCalledWith('0x1111111111111111111111111111111111111111');

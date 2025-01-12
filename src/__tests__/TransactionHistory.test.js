@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
 import TransactionHistory from '../components/TransactionHistory';
+import { ethers } from 'ethers';
 
 jest.setTimeout(10000);
 
@@ -21,9 +22,21 @@ const mockEthersService = {
   }
 };
 
-// Mock withEthers HOC
 jest.mock('../withEthers', () => ({
   withEthers: (Component) => (props) => <Component {...props} ethersService={mockEthersService} />
+}));
+
+jest.mock('ethers', () => ({
+  ethers: {
+    utils: {
+      formatEther: (value) => {
+        // Simple mock to handle common test values
+        if (value === '1000000000000000000') return '1.0';
+        if (value === '10000000000000000000') return '10.0';
+        return '0.0';
+      }
+    }
+  }
 }));
 
 const mockStore = configureStore([]);
@@ -58,39 +71,51 @@ describe('TransactionHistory', () => {
     });
   });
 
-  // it('displays transaction data correctly', async () => {
-  //   // Setup mock data with exact values we expect
-  //   const timestamp = new Date('2024-01-01T12:00:00Z').getTime() / 1000;
-  //   const mockEvent = {
-  //     transactionHash: '0x123',
-  //     args: {
-  //       amount: '1000000000000000000', // 1 ETH
-  //       tokens: '10000000000000000000' // 10 tokens
-  //     },
-  //     blockNumber: 1
-  //   };
+  it('displays transaction data correctly', async () => {
+    const mockTransaction = {
+      transactionHash: '0x123',
+      args: {
+        amount: '1000000000000000000', // 1 ETH
+        tokens: '10000000000000000000' // 10 tokens
+      },
+      blockNumber: 1
+    };
 
-  //   mockEthersService._service.icoContract.queryFilter.mockResolvedValueOnce([mockEvent]);
-  //   mockEthersService._service.provider.getBlock.mockResolvedValueOnce({ timestamp });
+    const mockBlockTimestamp = Math.floor(new Date('2024-01-01T12:00:00Z').getTime() / 1000);
+    
+    mockEthersService._service.icoContract.queryFilter.mockResolvedValueOnce([mockTransaction]);
+    mockEthersService._service.provider.getBlock.mockResolvedValueOnce({ 
+      timestamp: mockBlockTimestamp 
+    });
 
-  //   await act(async () => {
-  //     render(
-  //       <Provider store={store}>
-  //         <TransactionHistory />
-  //       </Provider>
-  //     );
-  //   });
+    render(
+      <Provider store={store}>
+        <TransactionHistory />
+      </Provider>
+    );
 
-  //   // Wait for table to render
-  //   await waitFor(() => {
-  //     expect(screen.getByRole('table')).toBeInTheDocument();
-  //   });
+    // Wait for the table and verify its contents
+    await waitFor(() => {
+      expect(screen.getByRole('table')).toBeInTheDocument();
+    });
 
-  //   // Look for cells containing the formatted numbers
-  //   const cells = screen.getAllByRole('cell');
-  //   expect(cells.some(cell => cell.textContent === '1.0')).toBe(true);
-  //   expect(cells.some(cell => cell.textContent === '10.0')).toBe(true);
-  // });
+    // Check table headers
+    expect(screen.getByText('Amount (ETH)')).toBeInTheDocument();
+    expect(screen.getByText('Tokens')).toBeInTheDocument();
+    expect(screen.getByText('Date')).toBeInTheDocument();
+
+    // Check transaction values
+    await waitFor(() => {
+      const cells = screen.getAllByRole('cell');
+      const dateCell = cells[0];
+      const amountCell = cells[1];
+      const tokensCell = cells[2];
+
+      expect(dateCell).toHaveTextContent(new Date(mockBlockTimestamp * 1000).toLocaleString());
+      expect(amountCell).toHaveTextContent('1.0');
+      expect(tokensCell).toHaveTextContent('10.0');
+    });
+  });
 
   it('handles refresh button click', async () => {
     await act(async () => {
@@ -101,7 +126,6 @@ describe('TransactionHistory', () => {
       );
     });
 
-    // Let initial render complete
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /refresh transactions/i })).toBeInTheDocument();
     });
@@ -115,28 +139,64 @@ describe('TransactionHistory', () => {
     expect(queryFilterSpy).toHaveBeenCalled();
   });
 
-  // it('shows loading state initially', async () => {
-  //   // Mock slow response
-  //   mockEthersService._service.getSignerAddress.mockImplementationOnce(
-  //     () => new Promise(resolve => setTimeout(() => resolve('0x123'), 100))
-  //   );
+  it('shows and removes loading state correctly', async () => {
+    // Create controlled promises for both address and transaction loading
+    let resolveAddress, resolveQuery;
+    const addressPromise = new Promise(resolve => {
+      resolveAddress = resolve;
+    });
+    const queryPromise = new Promise(resolve => {
+      resolveQuery = resolve;
+    });
 
-  //   let rendered;
-  //   await act(async () => {
-  //     rendered = render(
-  //       <Provider store={store}>
-  //         <TransactionHistory />
-  //       </Provider>
-  //     );
-  //   });
+    // Mock the async calls to control loading state
+    mockEthersService._service.getSignerAddress.mockImplementationOnce(() => addressPromise);
+    mockEthersService._service.icoContract.queryFilter.mockImplementationOnce(() => queryPromise);
 
-  //   // Check initial loading div
-  //   expect(screen.getByText('Loading transaction history...')).toBeInTheDocument();
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <TransactionHistory />
+        </Provider>
+      );
+    });
 
-  //   // Wait for loading to finish to clean up the test
-  //   await waitFor(() => {
-  //     expect(screen.queryByText('Loading transaction history...')).not.toBeInTheDocument();
-  //   });
-  // });
+    // Resolve address to trigger transaction loading
+    await act(async () => {
+      resolveAddress('0x123');
+    });
+
+    // Now we should see loading state
+    await waitFor(() => {
+      expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    });
+
+    // Resolve transaction loading
+    await act(async () => {
+      resolveQuery([]);
+    });
+
+    // Loading should be replaced with empty state
+    await waitFor(() => {
+      expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
+      expect(screen.getByText('No transactions found.')).toBeInTheDocument();
+    });
+  });
+
+  it('handles wallet connection state', () => {
+    store = mockStore({
+      referral: {
+        isWalletConnected: false
+      }
+    });
+
+    render(
+      <Provider store={store}>
+        <TransactionHistory />
+      </Provider>
+    );
+
+    expect(screen.getByText('Please connect your wallet to view transaction history.')).toBeInTheDocument();
+  });
 });
 

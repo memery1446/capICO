@@ -4,82 +4,106 @@ import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
 import TokenVestingDashboard from '../components/TokenVestingDashboard';
 
-jest.setTimeout(15000); // Increase timeout to 15 seconds for all tests in this file
-
 const mockStore = configureStore([]);
 
-// Mock the ethers library
+// Simple ethers mock
 jest.mock('ethers', () => ({
   ethers: {
     providers: {
       Web3Provider: jest.fn(() => ({
         getSigner: jest.fn(() => ({
-          getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
-        })),
-      })),
+          getAddress: jest.fn()
+        }))
+      }))
     },
-    Contract: jest.fn(() => ({
-      vestingSchedules: jest.fn().mockRejectedValue(new Error('Fetch error')),
-      lockedTokens: jest.fn().mockRejectedValue(new Error('Fetch error')),
-      icoStartTime: jest.fn().mockRejectedValue(new Error('Fetch error')),
-    })),
+    Contract: jest.fn(),
     utils: {
-      formatEther: jest.fn(val => (BigInt(val) / BigInt(1e18)).toString()),
-    },
-  },
+      formatEther: jest.fn()
+    }
+  }
+}));
+
+// Mock contract imports
+jest.mock('../contracts/addresses', () => ({
+  ICO_ADDRESS: '0x1234'
+}));
+
+jest.mock('../contracts/CapICO.json', () => ({
+  abi: []
 }));
 
 describe('TokenVestingDashboard', () => {
-  let store;
-
   beforeEach(() => {
-    store = mockStore({
+    global.window.ethereum = {
+      request: jest.fn().mockResolvedValue(true)
+    };
+  });
+
+  it('renders error state with correct styling', () => {
+    const store = mockStore({
       ico: {
-        tokenSymbol: 'TEST',
-      },
+        tokenSymbol: 'TEST'
+      }
     });
 
-    global.window.ethereum = {
-      request: jest.fn().mockResolvedValue(true),
-    };
-
-    jest.spyOn(console, 'error').mockImplementation(() => {}); // Suppress console.error
-  });
-
-  it('displays error message when fetching fails', async () => {
-    render(
+    const { container } = render(
       <Provider store={store}>
         <TokenVestingDashboard />
       </Provider>
     );
 
-    expect(await screen.findByText('Failed to fetch vesting and lockup information. Please try again.')).toBeInTheDocument();
+    // Test the error message container styling
+    const errorDiv = container.querySelector('.bg-red-50');
+    expect(errorDiv).toBeInTheDocument();
+    expect(errorDiv).toHaveClass('text-red-500', 'bg-red-50');
+    expect(errorDiv).toHaveTextContent('Failed to fetch vesting and lockup information. Please try again.');
   });
 
-  it('renders error message in red text', async () => {
-    render(
+  it('displays correct layout classes', () => {
+    const store = mockStore({
+      ico: {
+        tokenSymbol: 'TEST'
+      }
+    });
+
+    const { container } = render(
       <Provider store={store}>
         <TokenVestingDashboard />
       </Provider>
     );
 
-    const errorElement = await screen.findByText('Failed to fetch vesting and lockup information. Please try again.');
-    expect(errorElement).toHaveClass('text-red-500');
+    // Verify the main container classes
+    const mainContainer = container.firstChild;
+    expect(mainContainer).toHaveClass(
+      'bg-white',
+      'p-6',
+      'rounded-lg',
+      'shadow-md'
+    );
   });
 
-  // it('renders nested div elements with error message', async () => {
-  //   render(
-  //     <Provider store={store}>
-  //       <TokenVestingDashboard />
-  //     </Provider>
-  //   );
+  it('applies correct error message styling', () => {
+    const store = mockStore({
+      ico: {
+        tokenSymbol: 'TEST'
+      }
+    });
 
-  //   const outerDiv = await screen.findByRole('generic');
-  //   expect(outerDiv).toBeInTheDocument();
-    
-  //   const innerDiv = outerDiv.firstChild;
-  //   expect(innerDiv).toHaveClass('text-red-500');
-  //   expect(innerDiv).toHaveTextContent('Failed to fetch vesting and lockup information. Please try again.');
-  // });
+    const { container } = render(
+      <Provider store={store}>
+        <TokenVestingDashboard />
+      </Provider>
+    );
+
+    // Test additional error styling details
+    const errorDiv = container.querySelector('.text-red-500');
+    expect(errorDiv).toHaveClass(
+      'text-red-500',
+      'p-4',
+      'rounded-md',
+      'bg-red-50'
+    );
+  });
 });
 
+  
