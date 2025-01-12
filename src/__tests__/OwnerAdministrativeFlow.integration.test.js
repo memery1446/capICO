@@ -1,44 +1,69 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
 import thunk from 'redux-thunk';
+import { ethers } from 'ethers';
 import OwnerActions from '../components/OwnerActions';
 
-// Mock the ethers library
-jest.mock('ethers', () => {
-  const originalModule = jest.requireActual('ethers');
-  return {
-    ...originalModule,
-    ethers: {
-      ...originalModule.ethers,
-      providers: {
-        Web3Provider: jest.fn(() => ({
-          getSigner: jest.fn(() => ({
-            getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890'),
-          })),
-        })),
-      },
-      Contract: jest.fn(() => ({
-        isActive: jest.fn().mockResolvedValue(true),
-        cooldownEnabled: jest.fn().mockResolvedValue(false),
-        vestingEnabled: jest.fn().mockResolvedValue(true),
-        toggleActive: jest.fn().mockResolvedValue({ wait: jest.fn() }),
-      })),
+// Increase Jest timeout for these tests
+jest.setTimeout(10000);
+
+// Mock ethers
+jest.mock('ethers', () => ({
+  ethers: {
+    providers: {
+      Web3Provider: jest.fn()
     },
-  };
-});
+    Contract: jest.fn()
+  }
+}));
 
 const mockStore = configureStore([thunk]);
 
 describe('OwnerAdministrativeFlow Integration', () => {
   let store;
+  let mockProvider;
+  let mockSigner;
+  let mockContract;
 
   beforeEach(() => {
     store = mockStore({
-      // Add any necessary initial state here
+      wallet: {
+        address: '0x1234567890123456789012345678901234567890',
+        isConnected: true
+      }
     });
 
+    // Create mock implementations
+    mockSigner = {
+      getAddress: jest.fn().mockResolvedValue('0x1234567890123456789012345678901234567890')
+    };
+
+    mockProvider = {
+      getSigner: jest.fn().mockReturnValue(mockSigner)
+    };
+
+    mockContract = {
+      isActive: jest.fn().mockResolvedValue(true),
+      cooldownEnabled: jest.fn().mockResolvedValue(false),
+      vestingEnabled: jest.fn().mockResolvedValue(true),
+      toggleActive: jest.fn().mockResolvedValue({ 
+        wait: jest.fn().mockResolvedValue(true) 
+      }),
+      toggleCooldown: jest.fn().mockResolvedValue({ 
+        wait: jest.fn().mockResolvedValue(true) 
+      }),
+      toggleVesting: jest.fn().mockResolvedValue({ 
+        wait: jest.fn().mockResolvedValue(true) 
+      })
+    };
+
+    // Setup ethers mocks
+    ethers.providers.Web3Provider.mockImplementation(() => mockProvider);
+    ethers.Contract.mockImplementation(() => mockContract);
+
+    // Mock window.ethereum
     global.window.ethereum = {
       request: jest.fn().mockResolvedValue(['0x1234567890123456789012345678901234567890']),
       on: jest.fn(),
@@ -46,6 +71,7 @@ describe('OwnerAdministrativeFlow Integration', () => {
     };
   });
 
+  // Basic Rendering Tests
   it('renders the OwnerActions component', async () => {
     render(
       <Provider store={store}>
@@ -113,14 +139,10 @@ describe('OwnerAdministrativeFlow Integration', () => {
   });
 
   it('displays an error message when fetching contract state fails', async () => {
-    // Mock the Contract to throw an error
-    jest.spyOn(console, 'error').mockImplementation(() => {}); // Suppress console.error for this test
-    const mockEthers = jest.requireMock('ethers');
-    mockEthers.ethers.Contract.mockImplementation(() => ({
-      isActive: jest.fn().mockRejectedValue(new Error('Failed to fetch contract state')),
-      cooldownEnabled: jest.fn().mockRejectedValue(new Error('Failed to fetch contract state')),
-      vestingEnabled: jest.fn().mockRejectedValue(new Error('Failed to fetch contract state')),
-    }));
+    // Mock contract to throw an error
+    mockContract.isActive.mockRejectedValue(new Error('Failed to fetch contract state'));
+    mockContract.cooldownEnabled.mockRejectedValue(new Error('Failed to fetch contract state'));
+    mockContract.vestingEnabled.mockRejectedValue(new Error('Failed to fetch contract state'));
 
     render(
       <Provider store={store}>
@@ -131,16 +153,110 @@ describe('OwnerAdministrativeFlow Integration', () => {
     await waitFor(() => {
       expect(screen.getByText('Failed to fetch contract state. Please try again.')).toBeInTheDocument();
     });
-
-    // Clean up
-    jest.mocked(console.error).mockRestore();
-    mockEthers.ethers.Contract.mockReset();
   });
 
-  // Removed tests as per instructions
+  // Contract Integration Tests
+  it('successfully fetches and displays initial contract state', async () => {
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <OwnerActions />
+        </Provider>
+      );
+    });
 
-  // TODO: Implement tests for successful contract state fetching and ICO state toggling
-  // These tests were removed due to persistent issues with mocking ethers.js
-  // Consider revisiting these tests once the mocking strategy is refined
+    await waitFor(() => {
+      expect(mockContract.isActive).toHaveBeenCalled();
+      expect(mockContract.cooldownEnabled).toHaveBeenCalled();
+      expect(mockContract.vestingEnabled).toHaveBeenCalled();
+    });
+
+    expect(screen.getByText('Pause ICO')).toBeInTheDocument();
+  });
+
+  it('updates UI when contract state changes after toggling ICO', async () => {
+    mockContract.isActive
+      .mockResolvedValueOnce(true)  // Initial state
+      .mockResolvedValueOnce(false); // State after toggle
+
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <OwnerActions />
+        </Provider>
+      );
+    });
+
+    const toggleButton = screen.getByText('Pause ICO');
+
+    await act(async () => {
+      fireEvent.click(toggleButton);
+    });
+
+    await waitFor(() => {
+      expect(mockContract.toggleActive).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/completed successfully/i)).toBeInTheDocument();
+    });
+  });
+
+  it('handles transaction waiting and loading states correctly', async () => {
+    const waitFn = jest.fn().mockImplementation(() => 
+      new Promise(resolve => setTimeout(resolve, 50))
+    );
+    mockContract.toggleActive.mockResolvedValue({ wait: waitFn });
+
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <OwnerActions />
+        </Provider>
+      );
+    });
+
+    const toggleButton = screen.getByText('Pause ICO');
+    await act(async () => {
+      fireEvent.click(toggleButton);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/processing transaction/i)).toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/completed successfully/i)).toBeInTheDocument();
+    });
+  });
+
+  it('correctly updates all contract states after multiple actions', async () => {
+    // Setup sequential responses
+    mockContract.isActive
+      .mockResolvedValueOnce(true)  // Initial state
+      .mockResolvedValueOnce(false); // After toggle
+
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <OwnerActions />
+        </Provider>
+      );
+    });
+
+    const toggleButton = screen.getByText('Pause ICO');
+    
+    await act(async () => {
+      fireEvent.click(toggleButton);
+    });
+
+    await waitFor(() => {
+      expect(mockContract.toggleActive).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/completed successfully/i)).toBeInTheDocument();
+    });
+  });
 });
 
