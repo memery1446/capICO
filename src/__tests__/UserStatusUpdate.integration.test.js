@@ -212,43 +212,45 @@ describe('User Status Update Integration', () => {
     });
   });
 
-  // it('should calculate investment amount correctly with tier discounts', async () => {
-  //   await act(async () => {
-  //     renderComponents();
-  //   });
+// it('should calculate investment amount correctly with tier discounts', async () => {
+//     const initialStore = mockStore({
+//       ico: {
+//         tokenBalance: '10000',
+//         tokenPrice: '0.1',
+//         vestingSchedule: {
+//           totalAmount: 1000000,
+//           releasedAmount: 250000,
+//           startTime: Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60,
+//           duration: 365 * 24 * 60 * 60,
+//           cliff: 90 * 24 * 60 * 60,
+//         },
+//         isWhitelisted: true,
+//         isWalletConnected: true
+//       },
+//     });
 
-  //   await waitFor(() => {
-  //     const currentTierElement = screen.getByTestId('current-tier');
-  //     expect(currentTierElement).toHaveTextContent('Your current tier: 2');
-  //   }, { timeout: 5000 });
+//     await act(async () => {
+//       renderComponents(initialStore);
+//     });
 
-  //   await waitFor(() => {
-  //     const userInvestmentElement = screen.getByTestId('user-investment');
-  //     expect(userInvestmentElement).toHaveTextContent('Your estimated total investment: 900.0000 ETH');
-  //   }, { timeout: 5000 });
-  // });
+//     // Wait for and verify tier info display
+//     await waitFor(() => {
+//       const tierInfo = screen.getByTestId('tier-info');
+//       expect(tierInfo).toBeInTheDocument();
+//     });
 
-  // it('should handle investment updates with tier calculation', async () => {
-  //   const storeWithHighInvestment = mockStore({
-  //     ...store.getState(),
-  //     ico: {
-  //       ...store.getState().ico,
-  //       tokenBalance: '10000',
-  //       tokenPrice: '0.1',
-  //       isWhitelisted: true,
-  //       isWalletConnected: true
-  //     }
-  //   });
+//     // Verify tier calculation
+//     const currentTierElement = screen.getByTestId('current-tier');
+//     expect(currentTierElement).toHaveTextContent('Your current tier: 2');
 
-  //   await act(async () => {
-  //     renderComponents(storeWithHighInvestment);
-  //   });
+//     // Verify investment calculation with discount
+//     const userInvestmentElement = screen.getByTestId('user-investment');
+//     expect(userInvestmentElement).toHaveTextContent('Your estimated total investment: 900.0000 ETH');
+//   });
 
-  //   await waitFor(() => {
-  //     const tierInfo = screen.getByTestId('tier-info');
-  //     expect(tierInfo).toBeInTheDocument();
-  //   });
-  // });
+  // Temporarily commented out while fixing other test
+// it('should handle investment updates with tier calculation', async () => {
+// });
 
   it('should update display when token price changes', async () => {
     const { rerender } = renderComponents();
