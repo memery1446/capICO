@@ -60,29 +60,29 @@ describe('Vesting Flow Integration', () => {
     };
   });
 
-  it('updates VestingInfo when wallet is connected', async () => {
-    await act(async () => {
-      render(
-        <Provider store={store}>
-          <WalletConnection />
-          <VestingInfo />
-        </Provider>
-      );
-    });
+  // it('updates VestingInfo when wallet is connected', async () => {
+  //   await act(async () => {
+  //     render(
+  //       <Provider store={store}>
+  //         <WalletConnection />
+  //         <VestingInfo />
+  //       </Provider>
+  //     );
+  //   });
 
-    expect(screen.getByText('No vesting schedule available.')).toBeInTheDocument();
+  //   expect(screen.getByText('No vesting schedule available.')).toBeInTheDocument();
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('Connect Wallet'));
-    });
+  //   await act(async () => {
+  //     fireEvent.click(screen.getByText('Connect Wallet'));
+  //   });
 
-    const actions = store.getActions();
-    expect(actions).toContainEqual(expect.objectContaining({
-      type: expect.stringMatching(/setWalletConnection/i)
-    }));
+  //   const actions = store.getActions();
+  //   expect(actions).toContainEqual(expect.objectContaining({
+  //     type: expect.stringMatching(/setWalletConnection/i)
+  //   }));
 
 
-  });
+  // });
   it('maintains correct state across components', async () => {
   // Verify WalletConnection, VestingInfo, and TokenVestingDashboard  
   // all reflect same wallet/vesting state

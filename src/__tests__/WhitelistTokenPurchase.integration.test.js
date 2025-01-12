@@ -6,6 +6,9 @@ import thunk from 'redux-thunk';
 import WhitelistStatus from '../components/WhitelistStatus';
 import BuyTokens from '../components/BuyTokens';
 
+// Increase timeout for async tests
+jest.setTimeout(10000);
+
 const mockStore = configureStore([thunk]);
 
 describe('WhitelistTokenPurchase', () => {
@@ -77,12 +80,20 @@ describe('WhitelistTokenPurchase', () => {
       </Provider>
     );
 
+    // First verify the initial state
+    await waitFor(() => {
+      expect(screen.getByText(/Estimated tokens to receive:/)).toBeInTheDocument();
+    }, { timeout: 6000 });
+
+    // Then make the change
     const amountInput = screen.getByLabelText('Amount of ETH to spend');
     fireEvent.change(amountInput, { target: { value: '1' } });
 
+    // Look for the updated value
     await waitFor(() => {
-      expect(screen.getByText('Estimated tokens to receive: 10.00 TEST')).toBeInTheDocument();
-    });
+      const estimatedText = screen.getByText(/Estimated tokens to receive:/);
+      expect(estimatedText.textContent).toContain('10.00 TEST');
+    }, { timeout: 6000 });
   });
 
   it('does not disable buy button for non-whitelisted users', () => {
