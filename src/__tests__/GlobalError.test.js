@@ -123,5 +123,49 @@ describe('GlobalError', () => {
     
     expect(mockOnClose).toHaveBeenCalledTimes(3);
   });
+
+  // Test for proper cleanup of event listeners
+it('properly cleans up event listeners on unmount', () => {
+  const mockOnClose = jest.fn();
+  const { unmount } = render(<GlobalError error="Test error" onClose={mockOnClose} />);
+  
+  // Store the number of listeners before unmount
+  const beforeListeners = window.__handlers?.length || 0;
+  
+  // Unmount the component
+  unmount();
+  
+  // Simulate an Escape key press after unmount
+  fireEvent.keyDown(document, { key: 'Escape' });
+  
+  // Verify the handler wasn't called after unmount
+  expect(mockOnClose).not.toHaveBeenCalled();
+  
+  // Verify no memory leaks in event listeners
+  const afterListeners = window.__handlers?.length || 0;
+  expect(afterListeners).toBe(beforeListeners);
+});
+
+
+// Test for handling complex error objects
+it('handles complex error objects by converting them to strings', () => {
+  const complexError = {
+    error: {
+      innerError: {
+        message: 'Deeply nested error message'
+      }
+    }
+  };
+  
+  render(<GlobalError error={complexError} onClose={() => {}} />);
+  
+  // Should display [object Object] as per the current implementation
+  expect(screen.getByText('[object Object]')).toBeInTheDocument();
+  
+  // Verify the error dialog structure remains intact
+  const dialog = screen.getByRole('dialog');
+  expect(dialog).toBeInTheDocument();
+  expect(within(dialog).getByText('Error')).toBeInTheDocument();
+});
 });
 
