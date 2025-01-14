@@ -90,6 +90,26 @@ describe('ICOStatusDisplay', () => {
   expect(screen.getByTestId('progress-text')).toHaveTextContent('50.00% Raised');
 });
 
+// it('handles invalid numerical inputs gracefully', () => {
+//     const props = {
+//       totalRaised: 'invalid',
+//       hardCap: 'NaN',
+//       tokenName: 'Test Token',
+//       tokenSymbol: 'TEST'
+//     };
+    
+//     render(<ICOStatusDisplay {...props} />);
+    
+//     // Should show input values as-is in the display
+//     expect(screen.getByText('invalid ETH')).toBeInTheDocument();
+//     expect(screen.getByText('NaN ETH')).toBeInTheDocument();
+    
+//     // Progress bar should default to 0%
+//     const progressBar = screen.getByRole('progressbar', { name: 'ICO Progress' });
+//     expect(progressBar).toHaveStyle({ width: '0%' });
+//     expect(screen.getByTestId('progress-text')).toHaveTextContent('0.00% Raised');
+//   });
+
   it('handles decimal values correctly', () => {
   const props = {
     totalRaised: '33.33',
