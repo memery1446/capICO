@@ -1,34 +1,27 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Provider, useDispatch, useSelector } from 'react-redux';
-import { store } from './store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import ICOStatus from './ICOStatus';
+import WhitelistStatus from './WhitelistStatus';
+import BuyTokens from './BuyTokens';
+import TokenVestingDashboard from './TokenVestingDashboard';
+import ReferralSystem from './ReferralSystem';
+import TierInfo from './TierInfo';
+import TransactionHistory from './TransactionHistory';
+import OwnerActions from './OwnerActions';
+import UserStatus from './UserStatus';
+import WalletConnection from './WalletConnection';
+import GlobalError from './GlobalError';
 import { ethers } from 'ethers';
-import { ICO_ADDRESS } from './contracts/addresses';
-import CapICO from './contracts/CapICO.json';
-import ICOToken from './contracts/ICOToken.json';
-import { createEthersService } from './EthersServiceProvider';
-import { updateICOInfo } from './store/icoSlice';
-import { setGlobalError } from './store/errorSlice';
-import { withEthers } from './withEthers';
+import { ICO_ADDRESS } from '../contracts/addresses';
+import CapICO from '../contracts/CapICO.json';
+import ICOToken from '../contracts/ICOToken.json';
+import { createEthersService } from '../EthersServiceProvider';
+import { updateICOInfo } from '../store/icoSlice';
+import { setGlobalError } from '../store/errorSlice';
 
-// Component imports
-import ICOStatus from './components/ICOStatus';
-import WhitelistStatus from './components/WhitelistStatus';
-import BuyTokens from './components/BuyTokens';
-import TokenVestingDashboard from './components/TokenVestingDashboard';
-import ReferralSystem from './components/ReferralSystem';
-import TierInfo from './components/TierInfo';
-import TransactionHistory from './components/TransactionHistory';
-import OwnerActions from './components/OwnerActions';
-import UserStatus from './components/UserStatus';
-import WalletConnection from './components/WalletConnection';
-import GlobalError from './components/GlobalError';
-import LandingPage from './components/LandingPage';
-
-function AppContent() {
+function Dashboard({ ethService }) {
   const [isOwner, setIsOwner] = useState(false);
-  const [ethService, setEthService] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showDApp, setShowDApp] = useState(false);
   const dispatch = useDispatch();
   const isWalletConnected = useSelector((state) => state.referral.isWalletConnected);
 
@@ -38,7 +31,7 @@ function AppContent() {
       try {
         await web3Provider.send("eth_requestAccounts", []);
         const service = await createEthersService(web3Provider);
-        setEthService(service);
+        ethService.current = service;
         setIsLoading(false);
       } catch (error) {
         console.error("Error initializing contract:", error);
@@ -49,7 +42,7 @@ function AppContent() {
       setIsLoading(false);
       dispatch(setGlobalError("Web3 not detected. Please install MetaMask or another Web3 wallet."));
     }
-  }, [dispatch]);
+  }, [dispatch, ethService]);
 
   useEffect(() => {
     initializeWeb3();
@@ -68,12 +61,12 @@ function AppContent() {
   }, [initializeWeb3]);
 
   const getTiers = useCallback(async () => {
-    if (ethService && ethService.icoContract) {
+    if (ethService.current && ethService.current.icoContract) {
       try {
-        const tierCount = await ethService.icoContract.getTierCount();
+        const tierCount = await ethService.current.icoContract.getTierCount();
         const tiers = [];
         for (let i = 0; i < tierCount.toNumber(); i++) {
-          const tier = await ethService.icoContract.getTier(i);
+          const tier = await ethService.current.icoContract.getTier(i);
           tiers.push({
             minPurchase: ethers.utils.formatEther(tier[0]),
             maxPurchase: ethers.utils.formatEther(tier[1]),
@@ -92,11 +85,11 @@ function AppContent() {
   }, [ethService, dispatch]);
 
   const getEthersService = useCallback(() => {
-    if (ethService && ethService.provider && ethService.icoContract) {
+    if (ethService.current && ethService.current.provider && ethService.current.icoContract) {
       return {
         getNetwork: async () => {
           try {
-            return await ethService.provider.getNetwork();
+            return await ethService.current.provider.getNetwork();
           } catch (error) {
             console.error("Error getting network:", error);
             dispatch(setGlobalError("Failed to get network information. Please check your connection."));
@@ -105,9 +98,9 @@ function AppContent() {
         },
         getReferralBonus: async () => {
           try {
-            const signer = ethService.provider.getSigner();
+            const signer = ethService.current.provider.getSigner();
             const address = await signer.getAddress();
-            const bonus = await ethService.icoContract.referralBonuses(address);
+            const bonus = await ethService.current.icoContract.referralBonuses(address);
             return ethers.utils.formatEther(bonus);
           } catch (error) {
             console.error("Error getting referral bonus:", error);
@@ -117,9 +110,9 @@ function AppContent() {
         },
         getCurrentReferrer: async () => {
           try {
-            const signer = ethService.provider.getSigner();
+            const signer = ethService.current.provider.getSigner();
             const address = await signer.getAddress();
-            return ethService.icoContract.referrers(address);
+            return ethService.current.icoContract.referrers(address);
           } catch (error) {
             console.error("Error getting current referrer:", error);
             dispatch(setGlobalError("Failed to get current referrer. Please try again later."));
@@ -128,7 +121,7 @@ function AppContent() {
         },
         setReferrer: async (referrer) => {
           try {
-            const tx = await ethService.icoContract.setReferrer(referrer);
+            const tx = await ethService.current.icoContract.setReferrer(referrer);
             await tx.wait();
           } catch (error) {
             console.error("Error setting referrer:", error);
@@ -136,7 +129,7 @@ function AppContent() {
             throw error;
           }
         },
-        buyTokens: ethService.buyTokens,
+        buyTokens: ethService.current.buyTokens,
       };
     }
     return null;
@@ -144,10 +137,10 @@ function AppContent() {
 
   useEffect(() => {
     const checkOwnership = async () => {
-      if (ethService && ethService.icoContract) {
+      if (ethService.current && ethService.current.icoContract) {
         try {
-          const ownerAddress = await ethService.icoContract.owner();
-          const signerAddress = await ethService.getSignerAddress();
+          const ownerAddress = await ethService.current.icoContract.owner();
+          const signerAddress = await ethService.current.getSignerAddress();
           setIsOwner(ownerAddress.toLowerCase() === signerAddress.toLowerCase());
         } catch (error) {
           console.error("Error checking ownership:", error);
@@ -156,7 +149,7 @@ function AppContent() {
       }
     };
 
-    if (ethService) {
+    if (ethService.current) {
       checkOwnership();
       dispatch({ type: 'START_POLLING' });
     }
@@ -171,10 +164,6 @@ function AppContent() {
   }
 
   const ethersService = getEthersService();
-
-  if (!showDApp) {
-    return <LandingPage onEnterDApp={() => setShowDApp(true)} />;
-  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0A1172' }}>
@@ -224,7 +213,7 @@ function AppContent() {
             {/* User Interactive Features */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="bg-white rounded-xl shadow-lg p-6">
-                <BuyTokens buyTokens={ethService.buyTokens} />
+                <BuyTokens buyTokens={ethService.current.buyTokens} />
               </div>
               {ethersService && (
                 <div className="bg-white rounded-xl shadow-lg p-6">
@@ -263,15 +252,7 @@ function AppContent() {
   );
 }
 
-const WrappedAppContent = withEthers(AppContent);
+export default Dashboard;
 
-function App() {
-  return (
-    <Provider store={store}>
-      <WrappedAppContent />
-    </Provider>
-  );
-}
 
-export default App;
 
