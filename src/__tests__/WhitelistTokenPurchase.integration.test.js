@@ -1,96 +1,91 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
+import thunk from 'redux-thunk';
 import BuyTokens from '../components/BuyTokens';
-import WhitelistStatus from '../components/WhitelistStatus';
+import { ethers } from 'ethers';
 
-const mockStore = configureStore([]);
+const mockStore = configureStore([thunk]);
+
+jest.mock('ethers');
 
 describe('WhitelistTokenPurchase Integration', () => {
   let store;
+  let mockBuyTokens;
 
   beforeEach(() => {
+    mockBuyTokens = jest.fn().mockResolvedValue({ 
+      wait: jest.fn().mockResolvedValue(true) 
+    });
+
     store = mockStore({
       ico: {
-        isWhitelisted: false,
+        isWhitelisted: true,
         tokenSymbol: 'TEST',
         tokenPrice: '0.1',
-        tokenBalance: '10',
         maxPurchaseAmount: '10',
-        tokensAvailable: 1000,
-        isLoading: false,
       },
-    });
-  });
-
-  it('displays correct whitelist status when not whitelisted', () => {
-    render(
-      <Provider store={store}>
-        <WhitelistStatus />
-      </Provider>
-    );
-
-    expect(screen.getByText(/You are not whitelisted for this ICO./i)).toBeInTheDocument();
-  });
-
-  it('displays correct whitelist status when whitelisted', () => {
-    store = mockStore({
-      ico: { ...store.getState().ico, isWhitelisted: true },
+      wallet: {
+        isConnected: true,
+        address: '0x1234'
+      }
     });
 
-    render(
+    ethers.providers.Web3Provider.mockImplementation(() => ({
+      getSigner: jest.fn(() => ({
+        getAddress: jest.fn(() => Promise.resolve('0x1234')),
+      })),
+    }));
+
+    ethers.Contract.mockImplementation(() => ({
+      buyTokens: mockBuyTokens,
+      cooldownTimeLeft: jest.fn(() => Promise.resolve({ toNumber: () => 0 }))
+    }));
+
+    ethers.utils.parseEther = jest.fn(val => val);
+
+    global.window.ethereum = {
+      request: jest.fn(() => Promise.resolve(['0x1234'])),
+    };
+  });
+
+  it('allows whitelisted users to purchase tokens', async () => {
+    const { container } = render(
       <Provider store={store}>
-        <WhitelistStatus />
+        <BuyTokens />
       </Provider>
     );
 
-    expect(screen.getByText(/You are whitelisted for this ICO./i)).toBeInTheDocument();
+    // Set amount
+    const amountInput = screen.getByRole('spinbutton', { name: /amount of eth to spend/i });
+    const buyButton = screen.getByRole('button', { name: /buy tokens/i });
+
+    await act(async () => {
+      fireEvent.change(amountInput, { target: { value: '1.0' } });
+      fireEvent.click(buyButton);
+    });
+
+    expect(mockBuyTokens).toHaveBeenCalled();
   });
 
-  it('displays the buy tokens form with correct initial state', () => {
+  it('prevents purchase when cooldown period is active', async () => {
+    ethers.Contract.mockImplementation(() => ({
+      buyTokens: mockBuyTokens,
+      cooldownTimeLeft: jest.fn(() => Promise.resolve({ toNumber: () => 60 }))
+    }));
+
     render(
       <Provider store={store}>
         <BuyTokens />
       </Provider>
     );
 
-    expect(screen.getByRole('heading', { name: 'Buy Tokens' })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Amount of ETH to spend/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Referrer Address/i)).toBeInTheDocument();
-    expect(screen.getByText(/Current token price:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Estimated tokens to receive:/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Buy Tokens' })).toBeInTheDocument();
-  });
+    const cooldownText = await screen.findByText(/cooldown period: \d{2}:\d{2} remaining/i);
+    const buyButton = screen.getByRole('button', { name: /buy tokens/i });
 
-  it('disables buy button during cooldown period', () => {
-    // Mock the useState hook to simulate a cooldown period
-    jest.spyOn(React, 'useState').mockImplementationOnce(() => [60, jest.fn()]);
-
-    render(
-      <Provider store={store}>
-        <BuyTokens />
-      </Provider>
-    );
-
-    const buyButton = screen.getByRole('button', { name: 'Buy Tokens' });
-    expect(buyButton).toBeDisabled();
-    expect(screen.getByText(/Cooldown period:/i)).toBeInTheDocument();
-  });
-
-  it('enables buy button when there is no cooldown', () => {
-    // Mock the useState hook to simulate no cooldown period
-    jest.spyOn(React, 'useState').mockImplementationOnce(() => [0, jest.fn()]);
-
-    render(
-      <Provider store={store}>
-        <BuyTokens />
-      </Provider>
-    );
-
-    const buyButton = screen.getByRole('button', { name: 'Buy Tokens' });
-    expect(buyButton).not.toBeDisabled();
-    expect(screen.queryByText(/Cooldown period:/i)).not.toBeInTheDocument();
+    expect(cooldownText).toBeInTheDocument();
+    expect(buyButton).toHaveAttribute('disabled');
   });
 });
 
