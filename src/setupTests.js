@@ -94,6 +94,13 @@ console.error = (...args) => {
   if (args[0].includes('Error checking wallet connection:')) {
     return;
   }
+  if (args[0].includes('Error setting referrer: Error: Invalid address')) {
+      return;
+  }
+  if (args[0].includes('Error setting referrer: Error:')) {
+    return;
+  }
+
   originalError.apply(console, args);
 };
 

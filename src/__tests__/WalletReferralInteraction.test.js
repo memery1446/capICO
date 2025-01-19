@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { Provider } from 'react-redux';
 import configureStore from 'redux-mock-store';
@@ -54,10 +54,76 @@ describe('WalletConnection and ReferralSystem Interaction', () => {
     };
   });
 
-  it('updates ReferralSystem when wallet is connected', async () => {
+it('updates ReferralSystem when wallet is connected', async () => {
+    // First update the store to simulate connected wallet state
+    store = mockStore({
+      referral: {
+        isWalletConnected: true,
+        referralBonus: '0',
+        currentReferrer: '',
+      },
+      ico: {
+        tokenSymbol: 'TEST'
+      }
+    });
 
-    // needs to be redone
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <WalletConnection />
+          <ReferralSystem ethersService={{
+            getNetwork: jest.fn().mockResolvedValue({ chainId: 1 }),
+            getReferralBonus: jest.fn().mockResolvedValue('10'),
+            getCurrentReferrer: jest.fn().mockResolvedValue('0x9876...')
+          }} />
+        </Provider>
+      );
+    });
 
- });
+    // First verify referral system is visible
+    expect(screen.getByText('Referral System')).toBeInTheDocument();
+    
+    // Wait for network info to load
+    await waitFor(() => {
+      expect(screen.getByText(/Network:/)).toBeInTheDocument();
+    });
+});
+
+it('handles invalid referrer addresses correctly', async () => {
+    // Update store to simulate connected wallet state
+    store = mockStore({
+      referral: {
+        isWalletConnected: true,  // This is the key change
+        referralBonus: '0',
+        currentReferrer: '',
+      },
+      ico: {
+        tokenSymbol: 'TEST'
+      }
+    });
+
+    await act(async () => {
+      render(
+        <Provider store={store}>
+          <ReferralSystem ethersService={{
+            getNetwork: jest.fn().mockResolvedValue({ chainId: 1 }),
+            getReferralBonus: jest.fn().mockResolvedValue('10'),
+            getCurrentReferrer: jest.fn().mockResolvedValue(''),
+            setReferrer: jest.fn().mockRejectedValue(new Error('Invalid address'))
+          }} />
+        </Provider>
+      );
+    });
+
+    const input = screen.getByPlaceholderText('Enter referrer address');
+    fireEvent.change(input, { target: { value: 'invalid-address' } });
+    fireEvent.click(screen.getByText('Set Referrer'));
+    
+    await waitFor(() => {
+      expect(screen.getByText('Invalid address')).toBeInTheDocument();
+    });
+});
+
+
 });
 

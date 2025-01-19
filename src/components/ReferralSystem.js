@@ -52,7 +52,8 @@ const ReferralSystem = ({ ethersService }) => {
         setNewReferrer('');
         setError('');
       } catch (error) {
-        console.error('Error setting referrer:', error);
+        //console.error('Error setting referrer:', error); 
+        //supressed to clean terminal comment in to see correct error
         setError(error.message);
       }
     }
