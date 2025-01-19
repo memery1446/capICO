@@ -41,45 +41,22 @@ describe('TierInfo', () => {
     };
   });
 
-  it('displays the Investment Tiers heading after loading', async () => {
-    const mockGetTiers = jest.fn().mockResolvedValue([
-      { minPurchase: '100', maxPurchase: '1000', discount: 5 },
-    ]);
-    
-    render(
-      <Provider store={store}>
-        <TierInfo getTiers={mockGetTiers} />
-      </Provider>
-    );
+it('renders initial component structure correctly', async () => {
+  const mockGetTiers = jest.fn().mockResolvedValue([]);
+  
+  render(
+    <Provider store={store}>
+      <TierInfo getTiers={mockGetTiers} />
+    </Provider>
+  );
 
-    expect(screen.getByText('Investment Tiers')).toBeInTheDocument();
-  });
+  expect(screen.getByText('Investment Tiers')).toBeInTheDocument();
+  expect(screen.getByLabelText(/Investment \(ETH\):/i)).toBeInTheDocument();
+  expect(screen.getByText('Tier')).toBeInTheDocument();
+  expect(screen.getByText('Investment Range (ETH)')).toBeInTheDocument();
+  expect(screen.getByText('Discount')).toBeInTheDocument();
+});
 
-  it('renders the investment input field', async () => {
-    const mockGetTiers = jest.fn().mockResolvedValue([]);
-    
-    render(
-      <Provider store={store}>
-        <TierInfo getTiers={mockGetTiers} />
-      </Provider>
-    );
-
-    expect(screen.getByLabelText(/Investment \(ETH\):/i)).toBeInTheDocument();
-  });
-
-  it('displays the tier table headers', async () => {
-    const mockGetTiers = jest.fn().mockResolvedValue([]);
-    
-    render(
-      <Provider store={store}>
-        <TierInfo getTiers={mockGetTiers} />
-      </Provider>
-    );
-
-    expect(screen.getByText('Tier')).toBeInTheDocument();
-    expect(screen.getByText('Investment Range (ETH)')).toBeInTheDocument();
-    expect(screen.getByText('Discount')).toBeInTheDocument();
-  });
 
   it('renders tier table rows when tiers are provided', async () => {
     const mockTiers = [

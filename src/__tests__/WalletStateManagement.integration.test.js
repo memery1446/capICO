@@ -36,7 +36,6 @@ describe('Wallet State Management', () => {
       }
     });
 
-    // Minimal ethereum mock
     global.window.ethereum = {
       request: jest.fn().mockResolvedValue([]),
       on: jest.fn(),
@@ -79,5 +78,25 @@ describe('Wallet State Management', () => {
 
     expect(screen.getByText(/disconnect/i)).toBeInTheDocument();
   });
-});
 
+  it('sets up account change listener correctly', () => {
+    render(
+      <Provider store={store}>
+        <WalletConnection />
+      </Provider>
+    );
+
+    expect(window.ethereum.on).toHaveBeenCalledWith('accountsChanged', expect.any(Function));
+  });
+
+  it('cleans up listeners on unmount', () => {
+    const { unmount } = render(
+      <Provider store={store}>
+        <WalletConnection />
+      </Provider>
+    );
+
+    unmount();
+    expect(window.ethereum.removeListener).toHaveBeenCalled();
+  });
+});
