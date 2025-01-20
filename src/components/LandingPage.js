@@ -1,4 +1,4 @@
-import React from 'react';
+dimport React from 'react';
 
 const LandingPage = ({ onEnterDApp }) => {
   return (
