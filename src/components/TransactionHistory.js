@@ -35,12 +35,20 @@ const TransactionHistory = ({ ethersService }) => {
     setError(null);
 
     try {
-          const icoContract = new ethers.Contract(
-      ethersService._service.icoContract.address,
-      ethersService._service.icoContract.interface,
-      ethersService.provider  // Using Alchemy provider
-    );
-          
+      // Get the reading provider from ethersService
+      const provider = ethersService.provider || ethersService._service.provider;
+      
+      // Create contract instance using the provided provider
+      const contract = new ethers.Contract(
+        ICO_ADDRESS,
+        CapICO.abi,
+        provider
+      );
+
+      // Get the block number to limit our search
+      const latestBlock = await provider.getBlockNumber();
+      const fromBlock = Math.max(0, latestBlock - 10000); // Last 10000 blocks or from start
+
       const filter = ethersService._service.icoContract.filters.TokensPurchased(address);
       const events = await ethersService._service.icoContract.queryFilter(filter);
 
