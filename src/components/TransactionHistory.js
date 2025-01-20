@@ -4,6 +4,8 @@ import { withEthers } from '../withEthers';
 import { Card } from './ui/Card';
 import Button from './ui/Button';
 import { ethers } from 'ethers';
+import { ICO_ADDRESS } from '../contracts/addresses.js';  // Fixed import path
+import CapICO from '../contracts/CapICO.json';
 
 const TransactionHistory = ({ ethersService }) => {
   const [transactions, setTransactions] = useState([]);
@@ -35,15 +37,9 @@ const TransactionHistory = ({ ethersService }) => {
     setError(null);
 
     try {
-      // Get the reading provider from ethersService
+      // Use the existing contract from ethersService instead of creating new one
+      const contract = ethersService._service.icoContract;
       const provider = ethersService.provider || ethersService._service.provider;
-      
-      // Create contract instance using the provided provider
-      const contract = new ethers.Contract(
-        ICO_ADDRESS,
-        CapICO.abi,
-        provider
-      );
 
       // Get the block number to limit our search
       const latestBlock = await provider.getBlockNumber();
