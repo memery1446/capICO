@@ -8,9 +8,21 @@ export async function createEthersService(provider) {
     throw new Error('Provider is required');
   }
 
+  // Create Alchemy provider for read operations
+  const readProvider = new ethers.providers.JsonRpcProvider(
+    "https://eth-sepolia.g.alchemy.com/v2/ehS_FNG7PZdI8QnwGIukVMfXqf4CN2Vk",
+    {
+      name: 'sepolia',
+      chainId: 11155111
+    }
+  );
+
   const signer = provider.getSigner();
   const icoContract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
   const tokenContract = new ethers.Contract(TOKEN_ADDRESS, ICOToken.abi, signer);
+
+  // Create read-only contract instance
+  const readOnlyContract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, readProvider);
 
   const service = {
     provider,
@@ -34,6 +46,22 @@ export async function createEthersService(provider) {
       } catch (error) {
         console.error('Error in balanceOf:', error);
         return ethers.BigNumber.from(0);
+      }
+    },
+
+    // Add enhanced queryFilter with fallback
+    queryTransactionEvents: async (address) => {
+      try {
+        // Try with read provider first
+        const filter = readOnlyContract.filters.TokensPurchased(address);
+        const latestBlock = await readProvider.getBlockNumber();
+        const fromBlock = Math.max(0, latestBlock - 1000); // Last 1000 blocks
+        return await readOnlyContract.queryFilter(filter, fromBlock, latestBlock);
+      } catch (error) {
+        console.error('Error querying events with read provider:', error);
+        // Fallback to regular provider (useful for testing and local chains)
+        const filter = icoContract.filters.TokensPurchased(address);
+        return await icoContract.queryFilter(filter);
       }
     },
 
@@ -65,6 +93,8 @@ export async function createEthersService(provider) {
     decimals: () => tokenContract.decimals(),
     totalSupply: () => tokenContract.totalSupply(),
     getSignerAddress: () => signer.getAddress(),
+    // Add getBlock helper that uses read provider
+    getBlock: (blockNumber) => readProvider.getBlock(blockNumber),
   };
 
   return service;

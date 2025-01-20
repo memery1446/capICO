@@ -35,11 +35,10 @@ const TransactionHistory = ({ ethersService }) => {
     setError(null);
 
     try {
-      const filter = ethersService._service.icoContract.filters.TokensPurchased(address);
-      const events = await ethersService._service.icoContract.queryFilter(filter);
+      const events = await ethersService._service.queryTransactionEvents(address);
 
       const formattedTransactions = await Promise.all(events.map(async (event) => {
-        const block = await ethersService._service.provider.getBlock(event.blockNumber);
+        const block = await ethersService._service.getBlock(event.blockNumber);
         return {
           id: event.transactionHash,
           amount: ethers.utils.formatEther(event.args.amount),
