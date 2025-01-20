@@ -1,7 +1,7 @@
-// hardhat.config.js
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
-require("dotenv").config(); // You'll need to npm install dotenv
+require("@nomiclabs/hardhat-etherscan");
+require("dotenv").config();
 
 module.exports = {
   solidity: "0.8.19",
@@ -14,10 +14,13 @@ module.exports = {
       chainId: 1337
     },
     sepolia: {
-      url: process.env.SEPOLIA_RPC_URL || "https://sepolia.infura.io/v3/YOUR-PROJECT-ID",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      url: process.env.ALCHEMY_SEPOLIA_URL,
+      accounts: [process.env.PRIVATE_KEY],
       chainId: 11155111
     }
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY
   }
 };
 
