@@ -35,6 +35,12 @@ const TransactionHistory = ({ ethersService }) => {
     setError(null);
 
     try {
+          const icoContract = new ethers.Contract(
+      ethersService._service.icoContract.address,
+      ethersService._service.icoContract.interface,
+      ethersService.provider  // Using Alchemy provider
+    );
+          
       const filter = ethersService._service.icoContract.filters.TokensPurchased(address);
       const events = await ethersService._service.icoContract.queryFilter(filter);
 
