@@ -7,6 +7,7 @@
     "@emotion/styled": "^11.11.0",
     "@mui/material": "^5.14.11",
     "@reduxjs/toolkit": "^1.9.7",
+    "dotenv": "^16.4.7",
     "ethers": "^5.7.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -28,6 +29,7 @@
     "ethereum-waffle": "^3.4.4",
     "hardhat": "^2.17.3",
     "jest": "^27.5.1",
+    "jest-watch-typeahead": "^2.2.2",
     "postcss": "^8.4.49",
     "redux-mock-store": "^1.5.4",
     "tailwindcss": "^3.4.17"

@@ -94,12 +94,13 @@ function AppContent() {
   const getEthersService = useCallback(() => {
     if (ethService && ethService.provider && ethService.icoContract) {
       return {
+        provider: ethService.provider,
+        icoContract: ethService.icoContract,
         getNetwork: async () => {
           try {
             return await ethService.provider.getNetwork()
           } catch (error) {
             console.error("Error getting network:", error)
-            dispatch(setGlobalError("Failed to get network information. Please check your connection."))
             throw error
           }
         },
@@ -111,7 +112,6 @@ function AppContent() {
             return ethers.utils.formatEther(bonus)
           } catch (error) {
             console.error("Error getting referral bonus:", error)
-            dispatch(setGlobalError("Failed to get referral bonus. Please try again later."))
             throw error
           }
         },
@@ -122,7 +122,6 @@ function AppContent() {
             return ethService.icoContract.referrers(address)
           } catch (error) {
             console.error("Error getting current referrer:", error)
-            dispatch(setGlobalError("Failed to get current referrer. Please try again later."))
             throw error
           }
         },
@@ -132,7 +131,6 @@ function AppContent() {
             await tx.wait()
           } catch (error) {
             console.error("Error setting referrer:", error)
-            dispatch(setGlobalError("Failed to set referrer. Please try again."))
             throw error
           }
         },
@@ -140,7 +138,7 @@ function AppContent() {
       }
     }
     return null
-  }, [ethService, dispatch])
+  }, [ethService])
 
   useEffect(() => {
     const checkOwnership = async () => {
@@ -177,13 +175,16 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0A1172" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#1e88e5" }}>
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Section */}
         <div className="mb-8">
           <div className="bg-white rounded-xl shadow-xl p-6 backdrop-blur-lg bg-opacity-90">
-            <h1 className="text-4xl font-bold text-center" style={{ color: "#0A1172" }}>
-              Crowdsale ICO Dashboard
+            <h1 className="text-6xl font-bold text-center" style={{ color: "#1e88e5" }}>
+              capICO
+            </h1>
+            <h1 className="text-2xl font-bold text-center" style={{ color: "#1e88e5" }}>
+              INITIAL COIN OFFERING PLATFORM
             </h1>
             <p className="text-gray-600 text-center mt-2">Manage your ICO participation and token investments</p>
           </div>
