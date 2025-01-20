@@ -27,14 +27,19 @@ module.exports = {
     sepolia: {
       url: process.env.ALCHEMY_SEPOLIA_URL,
       accounts: [process.env.PRIVATE_KEY],
+<<<<<<< HEAD
       chainId: 11155111,
       timeout: 0,
       gas: 2100000,
       gasPrice: 8000000000  // 8 gwei
+=======
+      chainId: 11155111
+>>>>>>> f74552f99c461be4cb8c4eef6ecf7d670dac6c9f
     }
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY
+<<<<<<< HEAD
   },
   paths: {
     sources: "./contracts",
@@ -44,6 +49,8 @@ module.exports = {
   },
   mocha: {
     timeout: 40000
+=======
+>>>>>>> f74552f99c461be4cb8c4eef6ecf7d670dac6c9f
   }
 };
 

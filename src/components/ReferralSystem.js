@@ -4,6 +4,7 @@ import { setReferralBonus, setCurrentReferrer } from '../store/referralSlice';
 
 const SUPPORTED_NETWORKS = {
   1: 'Ethereum Mainnet',
+  11155111: 'Sepolia Testnet',
   31337: 'Hardhat Network',
   1337: 'Local Ganache',
 };
