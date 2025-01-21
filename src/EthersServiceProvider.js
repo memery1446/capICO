@@ -125,13 +125,9 @@ export async function createEthersService(provider) {
     symbol: () => tokenContract.symbol(),
     decimals: () => tokenContract.decimals(),
     totalSupply: () => tokenContract.totalSupply(),
-<<<<<<< HEAD
-    getSignerAddress: () => signer.getAddress()
-=======
     getSignerAddress: () => signer.getAddress(),
     // Add getBlock helper that uses read provider
-    getBlock: (blockNumber) => readProvider.getBlock(blockNumber),
->>>>>>> f0ecfd30615fa84edd5f512053d61481e7759c40
+    getBlock: (blockNumber) => readProvider.getBlock(blockNumber)
   };
 
   return service;
