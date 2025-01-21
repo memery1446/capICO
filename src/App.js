@@ -151,15 +151,18 @@ function AppContent() {
   }, [ethService])
 
   const updateTokenPrice = useCallback(async () => {
-    if (ethService && ethService.icoContract) {
+    if (ethService && ethService.icoContract && isWalletConnected) {
       try {
+        const signer = ethService.provider.getSigner()
+        await signer.getAddress() // This will throw if no account is connected
         const currentPrice = await ethService.icoContract.getCurrentTokenPrice()
         dispatch(setCurrentTokenPrice(ethers.utils.formatEther(currentPrice)))
       } catch (error) {
         console.error("Error updating token price:", error)
+        // Don't set global error here, as it might not be a critical issue
       }
     }
-  }, [ethService, dispatch])
+  }, [ethService, isWalletConnected, dispatch])
 
   useEffect(() => {
     const checkOwnership = async () => {
@@ -170,6 +173,7 @@ function AppContent() {
           setIsOwner(ownerAddress.toLowerCase() === signerAddress.toLowerCase())
         } catch (error) {
           console.error("Error checking ownership:", error)
+          // Only show error if wallet is connected
           if (isWalletConnected) {
             dispatch(setGlobalError("Failed to check ownership status. Please try again later."))
           }
@@ -177,28 +181,23 @@ function AppContent() {
       }
     }
 
-    const updateTokenPrice = async () => {
-      if (ethService && ethService.icoContract) {
-        try {
-          const currentPrice = await ethService.icoContract.getCurrentTokenPrice()
-          dispatch(setCurrentTokenPrice(ethers.utils.formatEther(currentPrice)))
-        } catch (error) {
-          console.error("Error updating token price:", error)
-        }
-      }
-    }
-
     checkOwnership()
-    updateTokenPrice()
+    if (isWalletConnected) {
+      updateTokenPrice()
+    }
   }, [ethService, dispatch, isWalletConnected, updateTokenPrice])
 
   useEffect(() => {
+    let interval
     if (isWalletConnected) {
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         updateTokenPrice()
       }, 30000) // Update every 30 seconds
-
-      return () => clearInterval(interval)
+    }
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
     }
   }, [isWalletConnected, updateTokenPrice])
 
@@ -257,7 +256,7 @@ function AppContent() {
               {/* User Interactive Features */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-xl shadow-lg p-6">
-                  <BuyTokens buyTokens={ethService.buyTokens} tokenPrice={currentTokenPrice} />
+                  <BuyTokens buyTokens={ethService?.buyTokens} tokenPrice={currentTokenPrice} />
                 </div>
                 {ethersService && (
                   <div className="bg-white rounded-xl shadow-lg p-6">
