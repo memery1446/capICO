@@ -36,6 +36,8 @@ jest.mock('ethers', () => {
         totalRaised: jest.fn().mockResolvedValue(original.BigNumber.from('1000000000000000000000')),
         hardCap: jest.fn().mockResolvedValue(original.BigNumber.from('10000000000000000000000')),
         tokenPrice: jest.fn().mockResolvedValue(original.BigNumber.from('100000000000000000')),
+        getCurrentTokenPrice: jest.fn().mockResolvedValue(original.BigNumber.from('100000000000000000')), // Add this line
+        isActive: jest.fn().mockResolvedValue(true),
       })),
       utils: {
         formatEther: jest.fn(val => original.utils.formatEther(val)),
@@ -97,6 +99,12 @@ console.error = (...args) => {
   if (args[0].includes('Error setting referrer: Error: Invalid address')) {
       return;
   }
+  if (args[0].includes('Error updating price:')) {
+  return;
+}
+if (args[0].includes('Error updating price after transaction:')) {
+  return;
+}
   if (args[0].includes('Error setting referrer: Error:')) {
     return;
   }

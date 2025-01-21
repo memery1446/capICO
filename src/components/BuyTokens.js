@@ -71,50 +71,68 @@ const BuyTokens = () => {
   }, [checkCooldown]);
 
   // Keep existing handleBuy logic
-  const handleBuy = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-    setSuccessMessage('');
-    setTxStatus('');
-    setTxHash('');
+const handleBuy = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError('');
+  setSuccessMessage('');
+  setTxStatus('');
+  setTxHash('');
 
-    if (cooldownTimeLeft > 0) {
-      setError(`Cooldown period not over. Please wait ${formatTime(cooldownTimeLeft)} before making another purchase.`);
-      setIsLoading(false);
-      return;
-    }
+  if (cooldownTimeLeft > 0) {
+    setError(`Cooldown period not over. Please wait ${formatTime(cooldownTimeLeft)} before making another purchase.`);
+    setIsLoading(false);
+    return;
+  }
 
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
+    
+    // Get current price before transaction
     try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
-
-      setTxStatus('Awaiting wallet approval...');
-      const tx = await contract.buyTokens({ value: ethers.utils.parseEther(formatAmount(amount)) });
-      setTxStatus('Transaction submitted...');
-      setTxHash(tx.hash);
-
-      await tx.wait();
-      setTxStatus('Transaction confirmed!');
-      setSuccessMessage(`Successfully purchased tokens!`);
-      setAmount('');
-      setReferrer('');
-
-      checkCooldown();
-      
-      setTimeout(() => {
-        setSuccessMessage('');
-        setTxStatus('');
-        setTxHash('');
-      }, 5000);
-    } catch (error) {
-      console.error('Error buying tokens:', error);
-      setError(getErrorMessage(error));
-    } finally {
-      setIsLoading(false);
+      const currentPrice = await contract.getCurrentTokenPrice();
+      dispatch(updateICOInfo({ tokenPrice: ethers.utils.formatEther(currentPrice) }));
+    } catch (priceError) {
+      console.error('Error updating price:', priceError);
+      // Don't block the transaction if price update fails
     }
-  };
+
+    setTxStatus('Awaiting wallet approval...');
+    const tx = await contract.buyTokens({ value: ethers.utils.parseEther(formatAmount(amount)) });
+    setTxStatus('Transaction submitted...');
+    setTxHash(tx.hash);
+
+    await tx.wait();
+    
+    // Update price after successful transaction
+    try {
+      const newPrice = await contract.getCurrentTokenPrice();
+      dispatch(updateICOInfo({ tokenPrice: ethers.utils.formatEther(newPrice) }));
+    } catch (priceError) {
+      console.error('Error updating price after transaction:', priceError);
+    }
+
+    setTxStatus('Transaction confirmed!');
+    setSuccessMessage(`Successfully purchased tokens!`);
+    setAmount('');
+    setReferrer('');
+
+    checkCooldown();
+      
+    setTimeout(() => {
+      setSuccessMessage('');
+      setTxStatus('');
+      setTxHash('');
+    }, 5000);
+  } catch (error) {
+    console.error('Error buying tokens:', error);
+    setError(getErrorMessage(error));
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleAmountChange = (e) => {
     const value = e.target.value;
@@ -129,7 +147,9 @@ const BuyTokens = () => {
     setAmount(newAmount.toFixed(2));
   };
 
-  const estimatedTokens = amount && tokenPrice ? parseFloat(formatAmount(amount)) / parseFloat(tokenPrice) : 0;
+  const estimatedTokens = tokenPrice && parseFloat(tokenPrice) > 0 
+  ? parseFloat(formatAmount(amount)) / parseFloat(tokenPrice) 
+  : 0;
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
