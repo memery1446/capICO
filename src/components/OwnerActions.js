@@ -89,7 +89,7 @@ const OwnerActions = () => {
         const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
 
         const addresses = whitelistAddresses.split(',').map(addr => addr.trim());
-        const tx = await contract.whitelistAddresses(addresses);
+        const tx = await contract.whitelist(addresses);
         await tx.wait();
 
         setSuccessMessage('Addresses whitelisted successfully');
