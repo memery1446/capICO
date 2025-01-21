@@ -150,6 +150,17 @@ function AppContent() {
     return null
   }, [ethService])
 
+  const updateTokenPrice = useCallback(async () => {
+    if (ethService && ethService.icoContract) {
+      try {
+        const currentPrice = await ethService.icoContract.getCurrentTokenPrice()
+        dispatch(setCurrentTokenPrice(ethers.utils.formatEther(currentPrice)))
+      } catch (error) {
+        console.error("Error updating token price:", error)
+      }
+    }
+  }, [ethService, dispatch])
+
   useEffect(() => {
     const checkOwnership = async () => {
       if (ethService && ethService.icoContract && isWalletConnected) {
@@ -178,9 +189,8 @@ function AppContent() {
     }
 
     checkOwnership()
-    // Remove the updateTokenPrice function from here
-    // The middleware should handle token price updates
-  }, [ethService, dispatch, isWalletConnected])
+    updateTokenPrice()
+  }, [ethService, dispatch, isWalletConnected, updateTokenPrice])
 
   useEffect(() => {
     if (isWalletConnected) {
