@@ -31,46 +31,50 @@ function AppContent() {
   const [showDApp, setShowDApp] = useState(false)
   const dispatch = useDispatch()
   const isWalletConnected = useSelector((state) => state.referral.isWalletConnected)
+  const tokenPrice = useSelector((state) => state.ico.tokenPrice)
 
-const initializeWeb3 = useCallback(async (requestAccounts = false) => {
-  if (typeof window.ethereum !== "undefined") {
-    const web3Provider = new ethers.providers.Web3Provider(window.ethereum)
-    try {
-      if (requestAccounts) {
-        await web3Provider.send("eth_requestAccounts", [])
+  const initializeWeb3 = useCallback(
+    async (requestAccounts = false) => {
+      if (typeof window.ethereum !== "undefined") {
+        const web3Provider = new ethers.providers.Web3Provider(window.ethereum)
+        try {
+          if (requestAccounts) {
+            await web3Provider.send("eth_requestAccounts", [])
+          }
+          const service = await createEthersService(web3Provider)
+          setEthService(service)
+          setIsLoading(false)
+        } catch (error) {
+          console.error("Error initializing contract:", error)
+          dispatch(setGlobalError("Failed to initialize Web3. Please check your wallet connection."))
+          setIsLoading(false)
+        }
+      } else {
+        setIsLoading(false)
+        if (requestAccounts) {
+          dispatch(setGlobalError("Web3 not detected. Please install MetaMask or another Web3 wallet."))
+        }
       }
-      const service = await createEthersService(web3Provider)
-      setEthService(service)
-      setIsLoading(false)
-    } catch (error) {
-      console.error("Error initializing contract:", error)
-      dispatch(setGlobalError("Failed to initialize Web3. Please check your wallet connection."))
-      setIsLoading(false)
+    },
+    [dispatch],
+  )
+
+  useEffect(() => {
+    initializeWeb3(false)
+
+    const handleAccountsChanged = () => initializeWeb3(true)
+    const handleChainChanged = () => initializeWeb3(true)
+
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", handleAccountsChanged)
+      window.ethereum.on("chainChanged", handleChainChanged)
+
+      return () => {
+        window.ethereum.removeListener("accountsChanged", handleAccountsChanged)
+        window.ethereum.removeListener("chainChanged", handleChainChanged)
+      }
     }
-  } else {
-    setIsLoading(false)
-    if (requestAccounts) {
-      dispatch(setGlobalError("Web3 not detected. Please install MetaMask or another Web3 wallet."))
-    }
-  }
-}, [dispatch])
-
-useEffect(() => {
-  initializeWeb3(false)
-
-  const handleAccountsChanged = () => initializeWeb3(true)
-  const handleChainChanged = () => initializeWeb3(true)
-
-  if (window.ethereum) {
-    window.ethereum.on("accountsChanged", handleAccountsChanged)
-    window.ethereum.on("chainChanged", handleChainChanged)
-
-    return () => {
-      window.ethereum.removeListener("accountsChanged", handleAccountsChanged)
-      window.ethereum.removeListener("chainChanged", handleChainChanged)
-    }
-  }
-}, [initializeWeb3])
+  }, [initializeWeb3])
 
   const getTiers = useCallback(async () => {
     if (ethService && ethService.icoContract) {
@@ -146,24 +150,37 @@ useEffect(() => {
   }, [ethService])
 
   useEffect(() => {
-const checkOwnership = async () => {
-  if (ethService && ethService.icoContract && isWalletConnected) {  // Add isWalletConnected check
-    try {
-      const ownerAddress = await ethService.icoContract.owner()
-      const signerAddress = await ethService.getSignerAddress()
-      setIsOwner(ownerAddress.toLowerCase() === signerAddress.toLowerCase())
-    } catch (error) {
-      console.error("Error checking ownership:", error)
-      // Only show error if wallet is connected
-      if (isWalletConnected) {
-        dispatch(setGlobalError("Failed to check ownership status. Please try again later."))
+    const checkOwnership = async () => {
+      if (ethService && ethService.icoContract && isWalletConnected) {
+        // Add isWalletConnected check
+        try {
+          const ownerAddress = await ethService.icoContract.owner()
+          const signerAddress = await ethService.getSignerAddress()
+          setIsOwner(ownerAddress.toLowerCase() === signerAddress.toLowerCase())
+        } catch (error) {
+          console.error("Error checking ownership:", error)
+          // Only show error if wallet is connected
+          if (isWalletConnected) {
+            dispatch(setGlobalError("Failed to check ownership status. Please try again later."))
+          }
+        }
       }
     }
-  }
-}
 
-checkOwnership() 
-  }, [ethService, dispatch, isWalletConnected])
+    const updateTokenPrice = async () => {
+      if (ethService && ethService.icoContract) {
+        try {
+          const currentPrice = await ethService.icoContract.getCurrentTokenPrice()
+          dispatch(updateICOInfo({ tokenPrice: ethers.utils.formatEther(currentPrice) }))
+        } catch (error) {
+          console.error("Error updating token price:", error)
+        }
+      }
+    }
+
+    checkOwnership()
+    updateTokenPrice()
+  }, [ethService, dispatch, isWalletConnected, tokenPrice])
 
   if (isLoading) {
     return (
@@ -220,7 +237,7 @@ checkOwnership()
               {/* User Interactive Features */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-xl shadow-lg p-6">
-                  <BuyTokens buyTokens={ethService.buyTokens} />
+                  <BuyTokens buyTokens={ethService.buyTokens} tokenPrice={tokenPrice} />
                 </div>
                 {ethersService && (
                   <div className="bg-white rounded-xl shadow-lg p-6">
