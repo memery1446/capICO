@@ -70,6 +70,10 @@ const WalletConnection = () => {
     }
   };
 
+const handleConnect = async () => {
+  await initializeWeb3(true)  // Now request accounts
+}
+
   const handleDisconnect = () => {
     setAddress('');
     setBalance('');

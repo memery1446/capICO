@@ -32,40 +32,44 @@ function AppContent() {
   const dispatch = useDispatch()
   const isWalletConnected = useSelector((state) => state.referral.isWalletConnected)
 
-  const initializeWeb3 = useCallback(async () => {
-    if (typeof window.ethereum !== "undefined") {
-      const web3Provider = new ethers.providers.Web3Provider(window.ethereum)
-      try {
+const initializeWeb3 = useCallback(async (requestAccounts = false) => {
+  if (typeof window.ethereum !== "undefined") {
+    const web3Provider = new ethers.providers.Web3Provider(window.ethereum)
+    try {
+      if (requestAccounts) {
         await web3Provider.send("eth_requestAccounts", [])
-        const service = await createEthersService(web3Provider)
-        setEthService(service)
-        setIsLoading(false)
-      } catch (error) {
-        console.error("Error initializing contract:", error)
-        dispatch(setGlobalError("Failed to initialize Web3. Please check your wallet connection."))
-        setIsLoading(false)
       }
-    } else {
+      const service = await createEthersService(web3Provider)
+      setEthService(service)
       setIsLoading(false)
+    } catch (error) {
+      console.error("Error initializing contract:", error)
+      dispatch(setGlobalError("Failed to initialize Web3. Please check your wallet connection."))
+      setIsLoading(false)
+    }
+  } else {
+    setIsLoading(false)
+    if (requestAccounts) {
       dispatch(setGlobalError("Web3 not detected. Please install MetaMask or another Web3 wallet."))
     }
-  }, [dispatch])
+  }
+}, [dispatch])
 
-  useEffect(() => {
-    initializeWeb3()
+useEffect(() => {
+  initializeWeb3(false)
 
+  if (window.ethereum) {
+    window.ethereum.on("accountsChanged", () => initializeWeb3(true))
+    window.ethereum.on("chainChanged", () => initializeWeb3(true))
+  }
+
+  return () => {
     if (window.ethereum) {
-      window.ethereum.on("accountsChanged", initializeWeb3)
-      window.ethereum.on("chainChanged", initializeWeb3)
+      window.ethereum.removeListener("accountsChanged", () => initializeWeb3(true))
+      window.ethereum.removeListener("chainChanged", () => initializeWeb3(true))
     }
-
-    return () => {
-      if (window.ethereum) {
-        window.ethereum.removeListener("accountsChanged", initializeWeb3)
-        window.ethereum.removeListener("chainChanged", initializeWeb3)
-      }
-    }
-  }, [initializeWeb3])
+  }
+}, [initializeWeb3])
 
   const getTiers = useCallback(async () => {
     if (ethService && ethService.icoContract) {
