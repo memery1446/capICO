@@ -50,19 +50,43 @@ export async function createEthersService(provider) {
       }
     },
 
-    // Add enhanced queryFilter with fallback
+    // Transaction history functionality with fallback
     queryTransactionEvents: async (address) => {
+      if (!address) return [];
+      
       try {
-        // Try with read provider first
+        // First try Alchemy provider
         const filter = readOnlyContract.filters.TokensPurchased(address);
         const latestBlock = await readProvider.getBlockNumber();
         const fromBlock = Math.max(0, latestBlock - 1000); // Last 1000 blocks
         return await readOnlyContract.queryFilter(filter, fromBlock, latestBlock);
       } catch (error) {
         console.error('Error querying events with read provider:', error);
-        // Fallback to regular provider (useful for testing and local chains)
-        const filter = icoContract.filters.TokensPurchased(address);
-        return await icoContract.queryFilter(filter);
+        try {
+          // Fallback to getLogs method
+          const iface = new Interface(CapICO.abi);
+          const filter = {
+            address: ICO_ADDRESS,
+            fromBlock: 0,
+            toBlock: 'latest',
+            topics: [
+              iface.getEventTopic('TokensPurchased'),
+              ethers.utils.hexZeroPad(address, 32)
+            ]
+          };
+
+          const logs = await provider.getLogs(filter);
+          return logs.map(log => {
+            const parsedLog = iface.parseLog(log);
+            return {
+              ...log,
+              args: parsedLog.args
+            };
+          });
+        } catch (fallbackError) {
+          console.error('Error in fallback query:', fallbackError);
+          return [];
+        }
       }
     },
 
@@ -70,38 +94,6 @@ export async function createEthersService(provider) {
     buyTokens: async (amount) => {
       const tx = await icoContract.buyTokens({ value: amount });
       return tx.wait();
-    },
-
-    // Transaction history functionality
-    queryTransactionEvents: async (address) => {
-      try {
-        const iface = new Interface(CapICO.abi);
-        const filter = {
-          address: ICO_ADDRESS,
-          fromBlock: 0,
-          toBlock: 'latest',
-          topics: [
-            iface.getEventTopic('TokensPurchased'),
-            ethers.utils.hexZeroPad(address, 32)
-          ]
-        };
-
-        const logs = await provider.getLogs(filter);
-        return logs.map(log => {
-          const parsedLog = iface.parseLog(log);
-          return {
-            ...log,
-            args: parsedLog.args
-          };
-        });
-      } catch (error) {
-        console.error('Error querying events:', error);
-        return [];
-      }
-    },
-
-    getBlock: async (blockNumber) => {
-      return provider.getBlock(blockNumber);
     },
 
     // Existing functionality
@@ -126,7 +118,7 @@ export async function createEthersService(provider) {
     decimals: () => tokenContract.decimals(),
     totalSupply: () => tokenContract.totalSupply(),
     getSignerAddress: () => signer.getAddress(),
-    // Add getBlock helper that uses read provider
+    // Block info helper
     getBlock: (blockNumber) => readProvider.getBlock(blockNumber)
   };
 

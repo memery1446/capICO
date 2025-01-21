@@ -58,15 +58,16 @@ const initializeWeb3 = useCallback(async (requestAccounts = false) => {
 useEffect(() => {
   initializeWeb3(false)
 
-  if (window.ethereum) {
-    window.ethereum.on("accountsChanged", () => initializeWeb3(true))
-    window.ethereum.on("chainChanged", () => initializeWeb3(true))
-  }
+  const handleAccountsChanged = () => initializeWeb3(true)
+  const handleChainChanged = () => initializeWeb3(true)
 
-  return () => {
-    if (window.ethereum) {
-      window.ethereum.removeListener("accountsChanged", () => initializeWeb3(true))
-      window.ethereum.removeListener("chainChanged", () => initializeWeb3(true))
+  if (window.ethereum) {
+    window.ethereum.on("accountsChanged", handleAccountsChanged)
+    window.ethereum.on("chainChanged", handleChainChanged)
+
+    return () => {
+      window.ethereum.removeListener("accountsChanged", handleAccountsChanged)
+      window.ethereum.removeListener("chainChanged", handleChainChanged)
     }
   }
 }, [initializeWeb3])
@@ -145,24 +146,24 @@ useEffect(() => {
   }, [ethService])
 
   useEffect(() => {
-    const checkOwnership = async () => {
-      if (ethService && ethService.icoContract) {
-        try {
-          const ownerAddress = await ethService.icoContract.owner()
-          const signerAddress = await ethService.getSignerAddress()
-          setIsOwner(ownerAddress.toLowerCase() === signerAddress.toLowerCase())
-        } catch (error) {
-          console.error("Error checking ownership:", error)
-          dispatch(setGlobalError("Failed to check ownership status. Please try again later."))
-        }
+const checkOwnership = async () => {
+  if (ethService && ethService.icoContract && isWalletConnected) {  // Add isWalletConnected check
+    try {
+      const ownerAddress = await ethService.icoContract.owner()
+      const signerAddress = await ethService.getSignerAddress()
+      setIsOwner(ownerAddress.toLowerCase() === signerAddress.toLowerCase())
+    } catch (error) {
+      console.error("Error checking ownership:", error)
+      // Only show error if wallet is connected
+      if (isWalletConnected) {
+        dispatch(setGlobalError("Failed to check ownership status. Please try again later."))
       }
     }
+  }
+}
 
-    if (ethService) {
-      checkOwnership()
-      dispatch({ type: "START_POLLING" })
-    }
-  }, [ethService, dispatch])
+checkOwnership() 
+  }, [ethService, dispatch, isWalletConnected])
 
   if (isLoading) {
     return (
