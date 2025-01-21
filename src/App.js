@@ -201,6 +201,31 @@ function AppContent() {
     }
   }, [isWalletConnected, updateTokenPrice])
 
+  useEffect(() => {
+    let interval
+    if (isWalletConnected) {
+      interval = setInterval(() => {
+        updateTokenPrice()
+      }, 30000) // Update every 30 seconds
+    }
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
+  }, [isWalletConnected, updateTokenPrice])
+
+  useEffect(() => {
+    if (isWalletConnected) {
+      dispatch({ type: "START_POLLING" })
+    }
+  }, [isWalletConnected, dispatch])
+
+  useEffect(() => {
+    console.log("Token price updated:", tokenPrice)
+    console.log("Current token price updated:", currentTokenPrice)
+  }, [tokenPrice, currentTokenPrice])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -256,7 +281,11 @@ function AppContent() {
               {/* User Interactive Features */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-xl shadow-lg p-6">
-                  <BuyTokens buyTokens={ethService?.buyTokens} tokenPrice={currentTokenPrice} />
+                  <BuyTokens
+                    buyTokens={ethService?.buyTokens}
+                    tokenPrice={currentTokenPrice}
+                    isWalletConnected={isWalletConnected}
+                  />
                 </div>
                 {ethersService && (
                   <div className="bg-white rounded-xl shadow-lg p-6">

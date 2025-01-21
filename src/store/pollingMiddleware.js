@@ -1,10 +1,11 @@
 import { ethers } from "ethers"
 import { ICO_ADDRESS } from "../contracts/addresses"
 import CapICO from "../contracts/CapICO.json"
-import { updateICOInfo } from "./icoSlice"
+import { updateICOInfo, setCurrentTokenPrice } from "./icoSlice"
 
 const pollingMiddleware = (store) => (next) => (action) => {
   if (action.type === "START_POLLING") {
+    console.log("Polling started")
     const pollInterval = setInterval(async () => {
       if (typeof window.ethereum !== "undefined") {
         try {
@@ -71,6 +72,11 @@ const pollingMiddleware = (store) => (next) => (action) => {
             // Don't throw here, just use "0" as the balance
           }
 
+          console.log("Polling update:", {
+            tokenPrice: ethers.utils.formatEther(tokenPrice),
+            currentTokenPrice: ethers.utils.formatEther(tokenPrice),
+          })
+
           store.dispatch(
             updateICOInfo({
               isActive,
@@ -85,6 +91,7 @@ const pollingMiddleware = (store) => (next) => (action) => {
               totalSupply: ethers.utils.formatEther(totalSupply),
             }),
           )
+          store.dispatch(setCurrentTokenPrice(ethers.utils.formatEther(tokenPrice)))
         } catch (error) {
           console.error("Polling error:", error)
           // Dispatch an action to update the state with an error
@@ -97,7 +104,10 @@ const pollingMiddleware = (store) => (next) => (action) => {
       }
     }, 15000) // Poll every 15 seconds
 
-    return () => clearInterval(pollInterval)
+    return () => {
+      console.log("Polling stopped")
+      clearInterval(pollInterval)
+    }
   }
   return next(action)
 }
