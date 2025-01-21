@@ -10,6 +10,8 @@ jest.setTimeout(10000);
 const mockEthersService = {
   _service: {
     getSignerAddress: jest.fn().mockResolvedValue('0x123'),
+    queryTransactionEvents: jest.fn().mockResolvedValue([]),
+    getBlock: jest.fn().mockResolvedValue({ timestamp: Date.now() / 1000 }),
     icoContract: {
       filters: {
         TokensPurchased: jest.fn().mockReturnValue({})
@@ -53,7 +55,7 @@ describe('TransactionHistory', () => {
       }
     });
 
-    mockEthersService._service.icoContract.queryFilter.mockResolvedValue([]);
+    mockEthersService._service.queryTransactionEvents.mockResolvedValue([]);
     mockEthersService._service.getSignerAddress.mockResolvedValue('0x123');
   });
 
@@ -83,8 +85,8 @@ describe('TransactionHistory', () => {
 
     const mockBlockTimestamp = Math.floor(new Date('2024-01-01T12:00:00Z').getTime() / 1000);
     
-    mockEthersService._service.icoContract.queryFilter.mockResolvedValueOnce([mockTransaction]);
-    mockEthersService._service.provider.getBlock.mockResolvedValueOnce({ 
+    mockEthersService._service.queryTransactionEvents.mockResolvedValueOnce([mockTransaction]);
+    mockEthersService._service.getBlock.mockResolvedValueOnce({ 
       timestamp: mockBlockTimestamp 
     });
 
@@ -130,13 +132,13 @@ describe('TransactionHistory', () => {
       expect(screen.getByRole('button', { name: /refresh transactions/i })).toBeInTheDocument();
     });
 
-    const queryFilterSpy = jest.spyOn(mockEthersService._service.icoContract, 'queryFilter');
+    const queryTransactionsSpy = jest.spyOn(mockEthersService._service, 'queryTransactionEvents');
     
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /refresh transactions/i }));
     });
 
-    expect(queryFilterSpy).toHaveBeenCalled();
+    expect(queryTransactionsSpy).toHaveBeenCalled();
   });
 
   it('shows and removes loading state correctly', async () => {
@@ -151,7 +153,7 @@ describe('TransactionHistory', () => {
 
     // Mock the async calls to control loading state
     mockEthersService._service.getSignerAddress.mockImplementationOnce(() => addressPromise);
-    mockEthersService._service.icoContract.queryFilter.mockImplementationOnce(() => queryPromise);
+    mockEthersService._service.queryTransactionEvents.mockImplementationOnce(() => queryPromise);
 
     await act(async () => {
       render(

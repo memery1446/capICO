@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react"
 
 const LandingPage = ({ onEnterDApp }) => {
   return (
@@ -7,9 +7,7 @@ const LandingPage = ({ onEnterDApp }) => {
       <div className="w-1/2 flex flex-col justify-center items-center p-8 bg-blue-600 text-white">
         <div className="max-w-md">
           <h1 className="text-8xl font-bold mb-4">CapICO</h1>
-          <p className="text-4xl mb-8">
-            Advanced ICO Platform for Seamless Token Launches
-          </p>
+          <p className="text-4xl mb-8">Advanced ICO Platform for Seamless Token Launches</p>
           <button
             onClick={onEnterDApp}
             className="bg-white text-blue-600 px-6 py-2 rounded-full text-lg font-semibold hover:bg-blue-100 transition-colors"
@@ -34,15 +32,15 @@ const LandingPage = ({ onEnterDApp }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 const FeatureBullet = ({ icon, text }) => (
   <li className="flex items-center text-gray-700">
     <span className="text-4xl mr-6">{icon}</span>
     <span className="text-2xl">{text}</span>
   </li>
-);
+)
 
-export default LandingPage;
+export default LandingPage
 
