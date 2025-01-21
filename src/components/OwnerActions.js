@@ -91,18 +91,23 @@ const handleWhitelist = async (e) => {
       // Split and clean addresses
       const addresses = whitelistAddresses
         .split(',')
-        .map(addr => addr.trim());
+        .map(addr => addr.trim())
+        .filter(addr => addr !== '');
 
-      // Only validate in production environment where ethers is available
-      if (process.env.NODE_ENV === 'production') {
-        for (const addr of addresses) {
-          if (addr && !ethers.utils.isAddress(addr)) {
-            throw new Error(`Invalid address format: ${addr}`);
-          }
+      // Basic validation
+      if (addresses.length === 0) {
+        throw new Error('Please enter at least one address');
+      }
+
+      // Validate addresses
+      for (const addr of addresses) {
+        if (!ethers.utils.isAddress(addr)) {
+          throw new Error(`Invalid address format: ${addr}`);
         }
       }
 
-      const tx = await contract.whitelistAddresses(addresses);
+      // Call contract with addresses and set status to true for whitelisting
+      const tx = await contract.updateWhitelist(addresses, true);
       await tx.wait();
 
       setSuccessMessage('Addresses whitelisted successfully');
