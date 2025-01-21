@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import { ICO_ADDRESS, TOKEN_ADDRESS } from './contracts/addresses';
 import CapICO from './contracts/CapICO.json';
 import ICOToken from './contracts/ICOToken.json';
+import { Interface } from '@ethersproject/abi';
 
 export async function createEthersService(provider) {
   if (!provider) {
@@ -43,6 +44,38 @@ export async function createEthersService(provider) {
       return tx.wait();
     },
 
+    // Transaction history functionality
+    queryTransactionEvents: async (address) => {
+      try {
+        const iface = new Interface(CapICO.abi);
+        const filter = {
+          address: ICO_ADDRESS,
+          fromBlock: 0,
+          toBlock: 'latest',
+          topics: [
+            iface.getEventTopic('TokensPurchased'),
+            ethers.utils.hexZeroPad(address, 32)
+          ]
+        };
+
+        const logs = await provider.getLogs(filter);
+        return logs.map(log => {
+          const parsedLog = iface.parseLog(log);
+          return {
+            ...log,
+            args: parsedLog.args
+          };
+        });
+      } catch (error) {
+        console.error('Error querying events:', error);
+        return [];
+      }
+    },
+
+    getBlock: async (blockNumber) => {
+      return provider.getBlock(blockNumber);
+    },
+
     // Existing functionality
     getCurrentTokenPrice: () => icoContract.getCurrentTokenPrice(),
     calculateTokenAmount: (weiAmount, tokenPrice) => 
@@ -64,7 +97,7 @@ export async function createEthersService(provider) {
     symbol: () => tokenContract.symbol(),
     decimals: () => tokenContract.decimals(),
     totalSupply: () => tokenContract.totalSupply(),
-    getSignerAddress: () => signer.getAddress(),
+    getSignerAddress: () => signer.getAddress()
   };
 
   return service;
