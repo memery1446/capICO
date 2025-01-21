@@ -6,7 +6,7 @@ import { ICO_ADDRESS } from "./contracts/addresses"
 import CapICO from "./contracts/CapICO.json"
 import ICOToken from "./contracts/ICOToken.json"
 import { createEthersService } from "./EthersServiceProvider"
-import { updateICOInfo } from "./store/icoSlice"
+import { updateICOInfo, setCurrentTokenPrice } from "./store/icoSlice"
 import { setGlobalError } from "./store/errorSlice"
 import { withEthers } from "./withEthers"
 
@@ -32,6 +32,7 @@ function AppContent() {
   const dispatch = useDispatch()
   const isWalletConnected = useSelector((state) => state.referral.isWalletConnected)
   const tokenPrice = useSelector((state) => state.ico.tokenPrice)
+  const currentTokenPrice = useSelector((state) => state.ico.currentTokenPrice)
 
   const initializeWeb3 = useCallback(
     async (requestAccounts = false) => {
@@ -152,14 +153,12 @@ function AppContent() {
   useEffect(() => {
     const checkOwnership = async () => {
       if (ethService && ethService.icoContract && isWalletConnected) {
-        // Add isWalletConnected check
         try {
           const ownerAddress = await ethService.icoContract.owner()
           const signerAddress = await ethService.getSignerAddress()
           setIsOwner(ownerAddress.toLowerCase() === signerAddress.toLowerCase())
         } catch (error) {
           console.error("Error checking ownership:", error)
-          // Only show error if wallet is connected
           if (isWalletConnected) {
             dispatch(setGlobalError("Failed to check ownership status. Please try again later."))
           }
@@ -171,7 +170,7 @@ function AppContent() {
       if (ethService && ethService.icoContract) {
         try {
           const currentPrice = await ethService.icoContract.getCurrentTokenPrice()
-          dispatch(updateICOInfo({ tokenPrice: ethers.utils.formatEther(currentPrice) }))
+          dispatch(setCurrentTokenPrice(ethers.utils.formatEther(currentPrice)))
         } catch (error) {
           console.error("Error updating token price:", error)
         }
@@ -179,8 +178,19 @@ function AppContent() {
     }
 
     checkOwnership()
-    updateTokenPrice()
-  }, [ethService, dispatch, isWalletConnected, tokenPrice])
+    // Remove the updateTokenPrice function from here
+    // The middleware should handle token price updates
+  }, [ethService, dispatch, isWalletConnected])
+
+  useEffect(() => {
+    if (isWalletConnected) {
+      const interval = setInterval(() => {
+        updateTokenPrice()
+      }, 30000) // Update every 30 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [isWalletConnected, updateTokenPrice])
 
   if (isLoading) {
     return (
@@ -237,7 +247,7 @@ function AppContent() {
               {/* User Interactive Features */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-xl shadow-lg p-6">
-                  <BuyTokens buyTokens={ethService.buyTokens} tokenPrice={tokenPrice} />
+                  <BuyTokens buyTokens={ethService.buyTokens} tokenPrice={currentTokenPrice} />
                 </div>
                 {ethersService && (
                   <div className="bg-white rounded-xl shadow-lg p-6">
