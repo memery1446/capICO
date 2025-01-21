@@ -76,32 +76,45 @@ const OwnerActions = () => {
     }
   };
 
-  const handleWhitelist = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-    setSuccessMessage('');
+const handleWhitelist = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError('');
+  setSuccessMessage('');
 
-    if (typeof window.ethereum !== 'undefined') {
-      try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
+  if (typeof window.ethereum !== 'undefined') {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(ICO_ADDRESS, CapICO.abi, signer);
 
-        const addresses = whitelistAddresses.split(',').map(addr => addr.trim());
-        const tx = await contract.whitelist(addresses);
-        await tx.wait();
+      // Split and clean addresses
+      const addresses = whitelistAddresses
+        .split(',')
+        .map(addr => addr.trim());
 
-        setSuccessMessage('Addresses whitelisted successfully');
-        setWhitelistAddresses('');
-      } catch (error) {
-        console.error('Error whitelisting addresses:', error);
-        setError('Failed to whitelist addresses. Please try again.');
-      } finally {
-        setIsLoading(false);
+      // Only validate in production environment where ethers is available
+      if (process.env.NODE_ENV === 'production') {
+        for (const addr of addresses) {
+          if (addr && !ethers.utils.isAddress(addr)) {
+            throw new Error(`Invalid address format: ${addr}`);
+          }
+        }
       }
+
+      const tx = await contract.whitelistAddresses(addresses);
+      await tx.wait();
+
+      setSuccessMessage('Addresses whitelisted successfully');
+      setWhitelistAddresses('');
+    } catch (error) {
+      console.error('Error whitelisting addresses:', error);
+      setError(error.message || 'Failed to whitelist addresses. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }
+};
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
