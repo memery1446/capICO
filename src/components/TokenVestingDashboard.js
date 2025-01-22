@@ -184,13 +184,13 @@ const TokenVestingDashboard = () => {
               <span className="text-gray-600">Total Amount:</span>
               <span className="font-medium">{vestingSchedule.totalAmount} {tokenSymbol}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Released Amount:</span>
-              <span className="font-medium">{vestingSchedule.releasedAmount} {tokenSymbol}</span>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-gray-600 whitespace-nowrap">Total Amount:</span>
+              <span className="font-medium text-right break-all">{vestingSchedule.totalAmount} {tokenSymbol}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Start Date:</span>
-              <span className="font-medium">{vestingSchedule.startTime.toLocaleDateString()}</span>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-gray-600 whitespace-nowrap">Released Amount:</span>
+              <span className="font-medium text-right break-all">{vestingSchedule.releasedAmount} {tokenSymbol}</span>
             </div>
           </div>
         </div>
