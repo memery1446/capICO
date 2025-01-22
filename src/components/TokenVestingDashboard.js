@@ -175,22 +175,22 @@ const TokenVestingDashboard = () => {
         </div>
       </div>
 
-      {/* Token Information */}
+{/* Token Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-lg font-semibold mb-3 text-gray-700">Vesting Details</h3>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Total Amount:</span>
-              <span className="font-medium">{vestingSchedule.totalAmount} {tokenSymbol}</span>
-            </div>
             <div className="flex justify-between items-start gap-2">
               <span className="text-gray-600 whitespace-nowrap">Total Amount:</span>
-              <span className="font-medium text-right break-all">{vestingSchedule.totalAmount} {tokenSymbol}</span>
+              <span className="font-medium text-right break-all max-w-[60%]">{vestingSchedule.totalAmount} {tokenSymbol}</span>
             </div>
             <div className="flex justify-between items-start gap-2">
               <span className="text-gray-600 whitespace-nowrap">Released Amount:</span>
-              <span className="font-medium text-right break-all">{vestingSchedule.releasedAmount} {tokenSymbol}</span>
+              <span className="font-medium text-right break-all max-w-[60%]">{vestingSchedule.releasedAmount} {tokenSymbol}</span>
+            </div>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-gray-600 whitespace-nowrap">Start Date:</span>
+              <span className="font-medium text-right">{vestingSchedule.startTime.toLocaleDateString()}</span>
             </div>
           </div>
         </div>
@@ -198,17 +198,17 @@ const TokenVestingDashboard = () => {
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-lg font-semibold mb-3 text-gray-700">Time Information</h3>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Vesting Duration:</span>
-              <span className="font-medium">{vestingSchedule.duration / (24 * 60 * 60)} days</span>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-gray-600 whitespace-nowrap">Vesting Duration:</span>
+              <span className="font-medium text-right">{vestingSchedule.duration / (24 * 60 * 60)} days</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Cliff Period:</span>
-              <span className="font-medium">{vestingSchedule.cliff / (24 * 60 * 60)} days</span>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-gray-600 whitespace-nowrap">Cliff Period:</span>
+              <span className="font-medium text-right">{vestingSchedule.cliff / (24 * 60 * 60)} days</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Cliff Status:</span>
-              <span className={cliffCountdown === 'Cliff period ended' ? 'text-green-600' : 'text-yellow-600'}>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-gray-600 whitespace-nowrap">Cliff Status:</span>
+              <span className={`font-medium text-right ${cliffCountdown === 'Cliff period ended' ? 'text-green-600' : 'text-yellow-600'}`}>
                 {cliffCountdown}
               </span>
             </div>
@@ -221,13 +221,13 @@ const TokenVestingDashboard = () => {
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-lg font-semibold mb-3 text-gray-700">Locked Tokens</h3>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Locked Amount:</span>
-              <span className="font-medium">{lockedTokens} {tokenSymbol}</span>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-gray-600 whitespace-nowrap">Locked Amount:</span>
+              <span className="font-medium text-right break-all max-w-[60%]">{lockedTokens} {tokenSymbol}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Lockup Status:</span>
-              <span className={lockupCountdown === 'Lockup period ended' ? 'text-green-600' : 'text-yellow-600'}>
+            <div className="flex justify-between items-start gap-2">
+              <span className="text-gray-600 whitespace-nowrap">Lockup Status:</span>
+              <span className={`font-medium text-right ${lockupCountdown === 'Lockup period ended' ? 'text-green-600' : 'text-yellow-600'}`}>
                 {lockupCountdown}
               </span>
             </div>
