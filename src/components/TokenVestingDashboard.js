@@ -6,7 +6,6 @@ import CapICO from '../contracts/CapICO.json';
 import { updateICOInfo } from '../store/icoSlice';
 
 const TokenVestingDashboard = () => {
-  // Keep all existing state and hooks
   const [vestingSchedule, setVestingSchedule] = useState(null);
   const [lockedTokens, setLockedTokens] = useState('0');
   const [error, setError] = useState('');
@@ -17,7 +16,6 @@ const TokenVestingDashboard = () => {
   const tokenSymbol = useSelector((state) => state.ico.tokenSymbol);
   const dispatch = useDispatch();
 
-  // Keep all existing helper functions
   const fetchVestingAndLockupInfo = useCallback(async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
@@ -65,7 +63,6 @@ const TokenVestingDashboard = () => {
     }
   }, []);
 
-  // Keep all existing effects
   useEffect(() => {
     fetchVestingAndLockupInfo();
     const interval = setInterval(fetchVestingAndLockupInfo, 30000);
@@ -86,7 +83,7 @@ const TokenVestingDashboard = () => {
     return Math.min(100, (elapsedTime / vestingSchedule.duration) * 100);
   };
 
-  // Keep all existing token management functions
+  // Token management functions
   const releaseTokens = useCallback(async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
@@ -175,7 +172,7 @@ const TokenVestingDashboard = () => {
         </div>
       </div>
 
-{/* Token Information */}
+  {/* Token Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-gray-50 p-4 rounded-lg">
           <h3 className="text-lg font-semibold mb-3 text-gray-700">Vesting Details</h3>

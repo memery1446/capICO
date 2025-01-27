@@ -12,7 +12,7 @@ const pollingMiddleware = (store) => (next) => (action) => {
           const provider = new ethers.providers.Web3Provider(window.ethereum)
           const accounts = await provider.listAccounts()
 
-          // Only proceed if we have a connected account
+          // Only proceed if account connected
           if (accounts.length === 0) {
             store.dispatch(
               updateICOInfo({

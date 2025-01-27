@@ -46,12 +46,12 @@ export function createContractWrapper(provider) {
   // Create proxy handler with proper method forwarding
   const handler = {
     get(target, prop) {
-      // First check if property exists on our wrapped contract
+      // Check if property exists on our wrapped contract
       if (prop in target) {
         return target[prop];
       }
 
-      // Then check ICO contract
+      // Check ICO contract
       if (prop in icoContract) {
         // Special case for balanceOf
         if (prop === 'balanceOf') {
@@ -60,7 +60,7 @@ export function createContractWrapper(provider) {
         return icoContract[prop];
       }
 
-      // Finally check token contract
+      // Check token contract
       if (prop in tokenContract) {
         return tokenContract[prop];
       }
@@ -74,10 +74,12 @@ export function createContractWrapper(provider) {
     }
   };
 
-  // Attach original contracts for direct access if needed
+  // Attach original contracts for direct access 
   baseContract._icoContract = icoContract;
   baseContract._tokenContract = tokenContract;
 
   // Return proxied contract
   return new Proxy(baseContract, handler);
 }
+
+

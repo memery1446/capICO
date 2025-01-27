@@ -5,7 +5,6 @@ import { ICO_ADDRESS } from '../contracts/addresses';
 import CapICO from '../contracts/CapICO.json';
 import { updateICOInfo } from '../store/icoSlice';
 
-// Keep all existing helper functions
 const formatTime = (seconds) => {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
@@ -28,7 +27,6 @@ const getErrorMessage = (error) => {
 };
 
 const BuyTokens = () => {
-  // Keep all existing state and hooks
   const [amount, setAmount] = useState('');
   const [referrer, setReferrer] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -41,7 +39,6 @@ const BuyTokens = () => {
   const tokenPrice = useSelector((state) => state.ico.tokenPrice);
   const dispatch = useDispatch();
 
-  // Keep existing cooldown check logic
   const checkCooldown = useCallback(async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
@@ -70,7 +67,6 @@ const BuyTokens = () => {
     return () => clearInterval(interval);
   }, [checkCooldown]);
 
-  // Keep existing handleBuy logic
 const handleBuy = async (e) => {
   e.preventDefault();
   setIsLoading(true);

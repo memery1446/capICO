@@ -70,16 +70,16 @@ const WalletConnection = () => {
     }
   };
 
-const handleConnect = async () => {
-  await initializeWeb3(true)  // Now request accounts
-}
+  const handleConnect = async () => {
+    await initializeWeb3(true)  // Now request accounts
+  }
 
-  const handleDisconnect = () => {
-    setAddress('');
-    setBalance('');
-    dispatch(setWalletConnection(false));
-    dispatch(resetReferralState());
-  };
+    const handleDisconnect = () => {
+      setAddress('');
+      setBalance('');
+      dispatch(setWalletConnection(false));
+      dispatch(resetReferralState());
+    };
 
   return (
     <div className="bg-white shadow-md rounded-lg w-full max-w-md mx-auto">

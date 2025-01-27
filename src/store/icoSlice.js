@@ -117,22 +117,22 @@ export const icoSlice = createSlice({
   },
 })
 
-export const {
-  setICOStatus,
-  setCooldownStatus,
-  setVestingStatus,
-  updateICOInfo,
-  setWhitelistStatus,
-  setCooldownTimeLeft,
-  setTiers,
-  setVestingSchedule,
-  setTransactionHistory,
-  updateTokenBalance,
-  setReferralBonus,
-  setLockedTokens,
-  setCurrentTokenPrice,
-  setEstimatedTokens,
-} = icoSlice.actions
+  export const {
+    setICOStatus,
+    setCooldownStatus,
+    setVestingStatus,
+    updateICOInfo,
+    setWhitelistStatus,
+    setCooldownTimeLeft,
+    setTiers,
+    setVestingSchedule,
+    setTransactionHistory,
+    updateTokenBalance,
+    setReferralBonus,
+    setLockedTokens,
+    setCurrentTokenPrice,
+    setEstimatedTokens,
+  } = icoSlice.actions
 
-export default icoSlice.reducer
+  export default icoSlice.reducer
 

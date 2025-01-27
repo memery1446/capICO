@@ -66,7 +66,7 @@ const OwnerActions = () => {
 
         await tx.wait();
         setSuccessMessage(`${action} completed successfully`);
-        await fetchContractState(); // Refresh the contract state
+        await fetchContractState(); // Refreshing contract state
       } catch (error) {
         console.error(`Error ${action}:`, error);
         setError(`Failed to ${action}. Please try again.`);
@@ -106,7 +106,7 @@ const handleWhitelist = async (e) => {
         }
       }
 
-      // Call contract with addresses and set status to true for whitelisting
+      // Call contract with addresses and set status for whitelisting
       const tx = await contract.updateWhitelist(addresses, true);
       await tx.wait();
 

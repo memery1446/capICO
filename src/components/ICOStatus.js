@@ -1,7 +1,6 @@
 import React from 'react';
 import { useSelector } from 'react-redux';
 
-// Separate display component for better testing
 export const ICOStatusDisplay = ({ 
   totalRaised, 
   hardCap, 
@@ -37,7 +36,6 @@ export const ICOStatusDisplay = ({
   );
 };
 
-// Main component that handles data fetching
 const ICOStatus = () => {
   const icoState = useSelector((state) => state.ico);
   
@@ -52,3 +50,4 @@ const ICOStatus = () => {
 };
 
 export default ICOStatus;
+

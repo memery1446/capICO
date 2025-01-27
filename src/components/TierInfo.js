@@ -126,17 +126,16 @@ const App = () => {
   );
 };
 
-// Dummy getTiers function for demonstration
-const getTiers = async () => {
-  // Replace with your actual API call or data fetching logic
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-  return [
-    { minPurchase: 0, maxPurchase: 100, discount: 0 },
-    { minPurchase: 100, maxPurchase: 500, discount: 5 },
-    { minPurchase: 500, maxPurchase: 1000, discount: 10 },
-    { minPurchase: 1000, maxPurchase: Infinity, discount: 15 },
-  ];
-};
+    // Dummy getTiers function for demo
+  const getTiers = async () => {
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulating network delay
+    return [
+      { minPurchase: 0, maxPurchase: 100, discount: 0 },
+      { minPurchase: 100, maxPurchase: 500, discount: 5 },
+      { minPurchase: 500, maxPurchase: 1000, discount: 10 },
+      { minPurchase: 1000, maxPurchase: Infinity, discount: 15 },
+    ];
+  };
 
 export default App;
 

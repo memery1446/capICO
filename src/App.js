@@ -159,7 +159,7 @@ function AppContent() {
         dispatch(setCurrentTokenPrice(ethers.utils.formatEther(currentPrice)))
       } catch (error) {
         console.error("Error updating token price:", error)
-        // Don't set global error here, as it might not be a critical issue
+        
       }
     }
   }, [ethService, isWalletConnected, dispatch])
