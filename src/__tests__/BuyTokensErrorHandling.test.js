@@ -7,7 +7,6 @@ import BuyTokens from '../components/BuyTokens';
 
 const mockStore = configureStore([thunk]);
 
-// Mock ethers before other imports
 jest.mock('ethers', () => ({
   ethers: {
     providers: {
@@ -80,8 +79,6 @@ describe('BuyTokens Error Handling', () => {
       </Provider>
     );
   };
-
-  // Existing tests remain here...
 
   it('shows error when trying to buy with amount below minimum', async () => {
     mockContract.minPurchase.mockResolvedValue('100000000000000000'); // 0.1 ETH minimum
@@ -211,7 +208,7 @@ describe('BuyTokens Error Handling', () => {
     expect(screen.getByText(/failed to buy tokens/i)).toBeInTheDocument();
   });
 
-it('handles multiple rapid buy attempts during cooldown', async () => {
+  it('handles multiple rapid buy attempts during cooldown', async () => {
     // Setup initial cooldown check
     mockContract.cooldownTimeLeft
       .mockResolvedValueOnce({ toNumber: () => 0 })  // Initial check: no cooldown

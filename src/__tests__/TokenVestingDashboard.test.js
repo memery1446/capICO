@@ -6,7 +6,7 @@ import TokenVestingDashboard from '../components/TokenVestingDashboard';
 
 const mockStore = configureStore([]);
 
-// Simple ethers mock
+// Ethers mock
 jest.mock('ethers', () => ({
   ethers: {
     providers: {

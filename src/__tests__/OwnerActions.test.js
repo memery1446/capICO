@@ -18,7 +18,7 @@ jest.mock('ethers', () => {
 
 import OwnerActions from '../components/OwnerActions';
 
-// Increase timeout for all tests
+
 jest.setTimeout(10000);
 
 describe('OwnerActions', () => {
@@ -114,7 +114,6 @@ describe('OwnerActions', () => {
     });
   });
 
-// In the beforeEach block, change mockContract setup:
     mockContract = {
       toggleActive: jest.fn().mockResolvedValue({ wait: jest.fn().mockResolvedValue(true) }),
       toggleCooldown: jest.fn().mockResolvedValue({ wait: jest.fn().mockResolvedValue(true) }),
@@ -125,10 +124,7 @@ describe('OwnerActions', () => {
       vestingEnabled: jest.fn().mockResolvedValue(true)
     };
 
-// Change the whitelist test:
-//Modify the test to use proper Ethereum addresses
 it('handles whitelist validation correctly', async () => {
-    // Use the same mock contract setup from beforeEach, but add isAddress to utils
     require('ethers').ethers.utils.isAddress = jest.fn().mockReturnValue(true);
     
     await act(async () => {

@@ -6,7 +6,6 @@ import thunk from 'redux-thunk';
 import { ethers } from 'ethers';
 import OwnerActions from '../components/OwnerActions';
 
-// Increase Jest timeout for these tests
 jest.setTimeout(10000);
 
 // Mock ethers

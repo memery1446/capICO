@@ -11,7 +11,7 @@ import WalletConnection from '../components/WalletConnection';
 const mockStore = configureStore([thunk]);
 const TEST_ADDRESS = '0x1234567890123456789012345678901234567890';
 
-// Use the mock from setupTests.js
+// Ethers mock
 jest.mock('ethers', () => {
   const original = jest.requireActual('ethers');
   return {

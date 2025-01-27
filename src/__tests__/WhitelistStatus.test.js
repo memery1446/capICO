@@ -6,7 +6,7 @@ import WhitelistStatus from '../components/WhitelistStatus';
 
 const mockStore = configureStore([]);
 
-// Mock the entire ethers library
+// Mock ethers
 jest.mock('ethers', () => ({
   ethers: {
     providers: {

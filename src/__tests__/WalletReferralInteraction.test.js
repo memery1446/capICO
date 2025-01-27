@@ -93,7 +93,7 @@ it('handles invalid referrer addresses correctly', async () => {
     // Update store to simulate connected wallet state
     store = mockStore({
       referral: {
-        isWalletConnected: true,  // This is the key change
+        isWalletConnected: true,  
         referralBonus: '0',
         currentReferrer: '',
       },

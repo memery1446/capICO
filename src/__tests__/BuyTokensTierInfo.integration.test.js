@@ -144,7 +144,6 @@ describe('TierInfo Integration', () => {
 
     // Should show Tier 2 info
     await waitFor(() => {
-      // Look for the exact text format shown in the DOM
       const tierText = screen.getByText(/Current Tier: 2 \(5% discount\)/);
       expect(tierText).toBeInTheDocument();
     });

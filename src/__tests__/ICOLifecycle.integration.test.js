@@ -310,8 +310,8 @@ describe('ICO Lifecycle State Management', () => {
         totalRaised: '6000',
         currentTier: 3,
         tokenPrice: '0.09', // 10% discount
-        whitelistPurchaseLimit: '7500', // Increased limit for whitelisted
-        publicPurchaseLimit: '2000'  // Increased for public but still lower
+        whitelistPurchaseLimit: '7500', 
+        publicPurchaseLimit: '2000'  
       }
     });
 

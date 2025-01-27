@@ -92,11 +92,11 @@ describe('WalletConnection', () => {
     expect(screen.getByText('Failed to connect wallet. Please try again.')).toBeInTheDocument();
   });
 
-it('handles disconnection correctly', async () => {
-  store = mockStore({
-    referral: {
-      isWalletConnected: true
-    }
+  it('handles disconnection correctly', async () => {
+    store = mockStore({
+      referral: {
+        isWalletConnected: true
+      }
   });
 
   const { rerender } = render(

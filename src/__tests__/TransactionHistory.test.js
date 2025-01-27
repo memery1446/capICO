@@ -168,7 +168,7 @@ describe('TransactionHistory', () => {
       resolveAddress('0x123');
     });
 
-    // Now we should see loading state
+    // Loading state
     await waitFor(() => {
       expect(screen.getByText(/loading/i)).toBeInTheDocument();
     });
@@ -178,7 +178,7 @@ describe('TransactionHistory', () => {
       resolveQuery([]);
     });
 
-    // Loading should be replaced with empty state
+    // Loading replaced with empty state
     await waitFor(() => {
       expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
       expect(screen.getByText('No transactions found.')).toBeInTheDocument();
